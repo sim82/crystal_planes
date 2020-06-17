@@ -1,0 +1,27 @@
+[package]
+name = "crystal_planes"
+version = "0.1.0"
+authors = ["sim"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+#amethyst = { path = "../amethyst", version = "*", optional = true, features = ["vulkan", "shader-compiler"] }
+amethyst = {git = "https://github.com/sim82/amethyst", branch = "crystal_planes"}
+itertools = "*"
+rayon = "1"
+derivative = "1"
+simdeez = "^1"
+image = "*"
+bincode = "*"
+num-traits = "*"
+glsl-layout = "0"
+clap = "2"
+serde = { version = "1", features = ["derive"] }
+genmesh = "*"
+lazy_static = "1"
+failure = "0"
+ndarray = "^0.13"
+rand = "^0.7"
+random_color = "^0.4"
