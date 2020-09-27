@@ -1,8 +1,6 @@
-use crate::math::prelude::*;
-use amethyst::core::{
-    ecs::{Component, DenseVecStorage},
-    math,
-};
+use crate::crystal::math::prelude::*;
+use bevy::prelude::*;
+use core::{fmt, ops::*};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -10,28 +8,7 @@ use std::{
     path::Path,
 };
 
-pub struct DisplayWrap<T>(T);
-
-impl<T> From<T> for DisplayWrap<T> {
-    fn from(t: T) -> Self {
-        DisplayWrap(t)
-    }
-}
-
-impl std::fmt::Display for DisplayWrap<Point3i> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        let DisplayWrap::<Point3i>(v) = self;
-        write!(f, "[{} {} {}]", v[0], v[1], v[2])
-    }
-}
-
-impl std::fmt::Display for DisplayWrap<[i32; 4]> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        let DisplayWrap::<[i32; 4]>([i1, i2, i3, i4]) = self;
-
-        write!(f, "[{} {} {} {}]", i1, i2, i3, i4)
-    }
-}
+use crate::crystal::math::prelude::*;
 
 pub type BlockMap = ndarray::Array3<bool>;
 const NUM_PLANE_CORNERS: usize = 4;
@@ -45,27 +22,29 @@ pub trait Bitmap {
 
     fn print(&self);
     fn step(&self, p: Point3i, dir: &Dir) -> Option<Point3i>;
+
+    fn cell_iter(&self) -> ndarray::iter::IndexedIter<'_, bool, ndarray::Ix3>; // FIXME: hide this
 }
 
 impl Bitmap for BlockMap {
     fn set(&mut self, p: Point3i, v: bool) {
         // let c = self.coord(&p);
-        self[[p.x as usize, p.y as usize, p.z as usize]] = v;
+        self[[p.0 as usize, p.1 as usize, p.2 as usize]] = v;
     }
 
     fn get(&self, p: Point3i) -> bool {
         let (x, y, z) = self.dim();
-        if p.x < 0
-            || p.y < 0
-            || p.z < 0
-            || p.x as usize >= x
-            || p.y as usize >= y
-            || p.z as usize >= z
+        if p.x() < 0
+            || p.y() < 0
+            || p.z() < 0
+            || p.x() as usize >= x
+            || p.y() as usize >= y
+            || p.z() as usize >= z
         {
             return false;
         }
         // self.bitmap[self.coord(&p)]
-        self[[p.x as usize, p.y as usize, p.z as usize]]
+        self[[p.x() as usize, p.y() as usize, p.z() as usize]]
     }
 
     fn add(&mut self, slice: &MapSlice) {
@@ -73,8 +52,8 @@ impl Bitmap for BlockMap {
 
         //let Vec2i { x: w, y: h } = slice.size();
         let size = slice.size();
-        let w = size[0];
-        let h = size[1];
+        let w = size.x();
+        let h = size.y();
         assert!(w >= sx as i32);
         assert!(h >= sz as i32);
 
@@ -97,18 +76,22 @@ impl Bitmap for BlockMap {
 
     fn step(&self, p: Point3i, dir: &Dir) -> Option<Point3i> {
         let (x, y, z) = self.dim();
-        let pnew = p + dir.get_normal::<i32>();
-        if pnew.x < 0
-            || pnew.y < 0
-            || pnew.z < 0
-            || pnew.x >= x as i32
-            || pnew.y >= y as i32
-            || pnew.z >= z as i32
+        let pnew = p + dir.get_normal_i();
+        if pnew.x() < 0
+            || pnew.y() < 0
+            || pnew.z() < 0
+            || pnew.x() >= x as i32
+            || pnew.y() >= y as i32
+            || pnew.z() >= z as i32
         {
             None
         } else {
             Some(pnew)
         }
+    }
+
+    fn cell_iter(&self) -> ndarray::iter::IndexedIter<'_, bool, ndarray::Ix3> {
+        self.indexed_iter()
     }
 }
 
@@ -138,9 +121,10 @@ impl MapSlice {
         let MapSlice(v) = self;
         Vec2i::new(v[0].len() as i32, v.len() as i32)
     }
+
     fn get(&self, p: Point2i) -> i32 {
         let MapSlice(v) = self;
-        v[p.y as usize][p.x as usize]
+        v[p.y() as usize][p.x() as usize]
     }
 
     fn pumped(&self) -> MapSlice {
@@ -171,33 +155,25 @@ pub enum Dir {
 }
 
 impl Dir {
-    pub fn get_normal<
-        T: num_traits::cast::FromPrimitive
-            + num_traits::identities::Zero
-            + std::marker::Copy
-            + std::cmp::PartialOrd
-            + std::fmt::Debug
-            + 'static,
-    >(
-        &self,
-    ) -> math::Vector3<T> {
-        let fromi = |v: Vec3i| {
-            if let (Some(fx), Some(fy), Some(fz)) =
-                (T::from_i32(v.x), T::from_i32(v.y), T::from_i32(v.z))
-            {
-                math::Vector3::<T>::new(fx, fy, fz)
-            } else {
-                math::Vector3::<T>::new(T::zero(), T::zero(), T::zero())
-            }
-        };
-
+    pub fn get_normal(&self) -> Vec3 {
         match self {
-            Dir::ZxNeg => fromi(Vec3i::new(0, -1, 0)),
-            Dir::ZxPos => fromi(Vec3i::new(0, 1, 0)),
-            Dir::YzNeg => fromi(Vec3i::new(-1, 0, 0)),
-            Dir::YzPos => fromi(Vec3i::new(1, 0, 0)),
-            Dir::XyNeg => fromi(Vec3i::new(0, 0, -1)),
-            Dir::XyPos => fromi(Vec3i::new(0, 0, 1)),
+            Dir::ZxNeg => Vec3::new(0f32, -1f32, 0f32),
+            Dir::ZxPos => Vec3::new(0f32, 1f32, 0f32),
+            Dir::YzNeg => Vec3::new(-1f32, 0f32, 0f32),
+            Dir::YzPos => Vec3::new(1f32, 0f32, 0f32),
+            Dir::XyNeg => Vec3::new(0f32, 0f32, -1f32),
+            Dir::XyPos => Vec3::new(0f32, 0f32, 1f32),
+        }
+    }
+
+    pub fn get_normal_i(&self) -> Vec3i {
+        match self {
+            Dir::ZxNeg => Vec3i::new(0, -1, 0),
+            Dir::ZxPos => Vec3i::new(0, 1, 0),
+            Dir::YzNeg => Vec3i::new(-1, 0, 0),
+            Dir::YzPos => Vec3i::new(1, 0, 0),
+            Dir::XyNeg => Vec3i::new(0, 0, -1),
+            Dir::XyPos => Vec3i::new(0, 0, 1),
         }
     }
 
@@ -208,20 +184,12 @@ impl Dir {
                 Vec3i::new(0, 0, 1),
                 Vec3i::new(1, 0, 1),
                 Vec3i::new(1, 0, 0),
-                // Vec3i::zero(), // TODO: think about if this looks better...
-                // Vec3i::unit_z(),
-                // Vec3i::unit_x() + Vec3i::unit_z(),
-                // Vec3i::unit_x(),
             ],
             Dir::ZxPos => [
                 Vec3i::new(0, 1, 0),
                 Vec3i::new(1, 1, 1),
                 Vec3i::new(1, 1, 1),
                 Vec3i::new(0, 1, 1),
-                // Vec3i::unit_y() + Vec3i::zero(),
-                // Vec3i::unit_y() + Vec3i::unit_x(),
-                // Vec3i::unit_y() + Vec3i::unit_z() + Vec3i::unit_x(),
-                // Vec3i::unit_y() + Vec3i::unit_z(),
             ],
 
             Dir::YzNeg => [
@@ -261,10 +229,10 @@ impl Cell for Point3i {
     fn get_plane(&self, dir: Dir) -> [Point3i; 4] {
         let points = dir.get_corners();
         [
-            self + points[0],
-            self + points[1],
-            self + points[2],
-            self + points[3],
+            *self + points[0],
+            *self + points[1],
+            *self + points[2],
+            *self + points[3],
         ]
     }
 }
@@ -278,14 +246,11 @@ pub struct Plane {
 impl Plane {
     fn new(vertices: [i32; NUM_PLANE_CORNERS], dir: Dir, cell: Point3i) -> Plane {
         Plane {
-            vertices: vertices,
-            dir: dir,
-            cell: cell,
+            vertices,
+            dir,
+            cell,
         }
     }
-}
-impl Component for Plane {
-    type Storage = DenseVecStorage<Self>;
 }
 
 pub struct PlanesSep {
@@ -303,7 +268,7 @@ impl PlanesSep {
 }
 
 impl PlanesSep {
-    pub fn create_planes(&mut self, bitmap: &BlockMap) {
+    pub fn create_planes(&mut self, bitmap: &dyn Bitmap) {
         let mut zx_planes = Vec::<Plane>::new();
         let mut xy_planes = Vec::<Plane>::new();
         let mut yz_planes = Vec::<Plane>::new();
@@ -311,7 +276,7 @@ impl PlanesSep {
         let mut xyn_planes = Vec::<Plane>::new();
         let mut yzn_planes = Vec::<Plane>::new();
 
-        for ((x, y, z), v) in bitmap.indexed_iter() {
+        for ((x, y, z), v) in bitmap.cell_iter() {
             // println!("{} {} {}", x, y, z);
             if !v {
                 continue;
@@ -335,7 +300,7 @@ impl PlanesSep {
                 if create_plane {
                     let local_corners: [Vec3i; NUM_PLANE_CORNERS] = dir.get_corners();
                     assert!(local_corners.len() == 4);
-                    let corners = local_corners.iter().map(|x| this_point + x);
+                    let corners = local_corners.iter().map(|x| this_point + *x);
                     let mut points = [0; NUM_PLANE_CORNERS];
 
                     for (i, c) in corners.enumerate() {
@@ -347,24 +312,24 @@ impl PlanesSep {
             }
         }
 
-        let zx_order = |p1: &Plane, p2: &Plane| match p1.cell.y.cmp(&p2.cell.y) {
-            std::cmp::Ordering::Equal => match p1.cell.z.cmp(&p2.cell.z) {
-                std::cmp::Ordering::Equal => p1.cell.x.cmp(&p2.cell.x),
+        let zx_order = |p1: &Plane, p2: &Plane| match p1.cell.y().cmp(&p2.cell.y()) {
+            std::cmp::Ordering::Equal => match p1.cell.z().cmp(&p2.cell.z()) {
+                std::cmp::Ordering::Equal => p1.cell.x().cmp(&p2.cell.x()),
                 r => r,
             },
             r => r,
         };
 
-        let xy_order = |p1: &Plane, p2: &Plane| match p1.cell.z.cmp(&p2.cell.z) {
-            std::cmp::Ordering::Equal => match p1.cell.x.cmp(&p2.cell.x) {
-                std::cmp::Ordering::Equal => p1.cell.y.cmp(&p2.cell.y),
+        let xy_order = |p1: &Plane, p2: &Plane| match p1.cell.z().cmp(&p2.cell.z()) {
+            std::cmp::Ordering::Equal => match p1.cell.x().cmp(&p2.cell.x()) {
+                std::cmp::Ordering::Equal => p1.cell.y().cmp(&p2.cell.y()),
                 r => r,
             },
             r => r,
         };
-        let yz_order = |p1: &Plane, p2: &Plane| match p1.cell.x.cmp(&p2.cell.x) {
-            std::cmp::Ordering::Equal => match p1.cell.y.cmp(&p2.cell.y) {
-                std::cmp::Ordering::Equal => p1.cell.z.cmp(&p2.cell.z),
+        let yz_order = |p1: &Plane, p2: &Plane| match p1.cell.x().cmp(&p2.cell.x()) {
+            std::cmp::Ordering::Equal => match p1.cell.y().cmp(&p2.cell.y()) {
+                std::cmp::Ordering::Equal => p1.cell.z().cmp(&p2.cell.z()),
                 r => r,
             },
             r => r,
@@ -403,6 +368,7 @@ impl PlanesSep {
             println!("{}", DisplayWrap::from(p.vertices));
         }
     }
+
     #[allow(unused)]
     pub fn vertex_iter(&self) -> impl Iterator<Item = (&Point3i, i32)> + '_ {
         self.vertices.iter().enumerate().map(|(i, p)| (p, i as i32))
@@ -411,6 +377,7 @@ impl PlanesSep {
     pub fn planes_iter(&self) -> impl Iterator<Item = &Plane> + '_ {
         self.planes.iter()
     }
+
     pub fn num_planes(&self) -> usize {
         self.planes.len()
     }
@@ -428,21 +395,21 @@ pub fn read_map_slice(reader: &mut dyn std::io::BufRead, size: Vec2i) -> std::io
 
     let mut slice = Vec::new(); //vec![vec![0;0]];
 
-    for _ in 0..size.y {
+    for _ in 0..size.y() {
         let mut line = String::new();
 
         reader.read_line(&mut line)?;
         let line = line.trim();
 
         // println!("{} {}", line.len(), width);
-        assert!(line.len() == size.x as usize);
+        assert!(line.len() == size.x() as usize);
 
         slice.push(line.chars().map(to_height).map(|x| x).collect());
     }
     Ok(MapSlice(slice))
 }
 
-pub fn read_map<P: AsRef<Path>>(filename: P) -> std::io::Result<BlockMap> {
+pub fn read_map<P: AsRef<Path>>(filename: P) -> std::io::Result<Box<dyn Bitmap>> {
     let file = File::open(filename)?;
 
     let mut reader = BufReader::new(file);
@@ -465,14 +432,20 @@ pub fn read_map<P: AsRef<Path>>(filename: P) -> std::io::Result<BlockMap> {
     let slice = read_map_slice(&mut reader, Vec2i::new(width, height))?;
     slice.print();
 
+    // pump disabled!
     let slice = slice.pumped().pumped();
+    // let slice = slice.pumped();
     let max = slice.max();
     let real_size = slice.size();
 
     println!("real size: {:?}", real_size);
-    let mut bm = BlockMap::default((real_size.x as usize, *max as usize, real_size.y as usize)); //Bitmap::new(width, *max, height);
+    let mut bm = BlockMap::default((
+        real_size.x() as usize,
+        *max as usize,
+        real_size.y() as usize,
+    )); //Bitmap::new(width, *max, height);
     bm.add(&slice);
-    Ok(bm)
+    Ok(Box::new(bm))
 }
 
 pub struct PlaneScene {

@@ -1,6 +1,8 @@
-use super::{util, BlockMap, Dir, Plane, PlanesSep};
-use crate::math::prelude::*;
-use amethyst::core::math;
+use crate::crystal::math::prelude::*;
+use crate::crystal::util;
+use bevy::math::prelude::*;
+
+use super::{BlockMap, Dir, Plane, PlanesSep};
 use image::ImageBuffer;
 use std::{
     cmp::Ordering,
@@ -16,12 +18,12 @@ fn normal_cull(pl1: &Plane, pl2: &Plane) -> bool {
 
     p1 == p2
         || d1 == d2
-        || (d1 == Dir::XyNeg && d2 == Dir::XyPos && p1.z < p2.z)
-        || (d1 == Dir::XyPos && d2 == Dir::XyNeg && p1.z > p2.z)
-        || (d1 == Dir::YzNeg && d2 == Dir::YzPos && p1.x < p2.x)
-        || (d1 == Dir::YzPos && d2 == Dir::YzNeg && p1.x > p2.x)
-        || (d1 == Dir::ZxNeg && d2 == Dir::ZxPos && p1.y < p2.y)
-        || (d1 == Dir::ZxPos && d2 == Dir::ZxNeg && p1.y > p2.y)
+        || (d1 == Dir::XyNeg && d2 == Dir::XyPos && p1.z() < p2.z())
+        || (d1 == Dir::XyPos && d2 == Dir::XyNeg && p1.z() > p2.z())
+        || (d1 == Dir::YzNeg && d2 == Dir::YzPos && p1.x() < p2.x())
+        || (d1 == Dir::YzPos && d2 == Dir::YzNeg && p1.x() > p2.x())
+        || (d1 == Dir::ZxNeg && d2 == Dir::ZxPos && p1.y() < p2.y())
+        || (d1 == Dir::ZxPos && d2 == Dir::ZxNeg && p1.y() > p2.y())
 }
 
 fn setup_formfactors_single(planes: &PlanesSep, bitmap: &BlockMap) -> Vec<(u32, u32, f32)> {
@@ -29,22 +31,22 @@ fn setup_formfactors_single(planes: &PlanesSep, bitmap: &BlockMap) -> Vec<(u32, 
     println!("num planes: {}", planes.len());
     let mut ffs = Vec::new();
     for (i, plane1) in planes.iter().enumerate() {
-        let norm1 = plane1.dir.get_normal::<i32>();
-        let norm1f = Vec3::new(norm1.x as f32, norm1.y as f32, norm1.z as f32);
+        let norm1 = plane1.dir.get_normal_i();
+        let norm1f = Vec3::new(norm1.x() as f32, norm1.y() as f32, norm1.z() as f32);
         let p1f = Vec3::new(
-            plane1.cell.x as f32,
-            plane1.cell.y as f32,
-            plane1.cell.z as f32,
+            plane1.cell.x() as f32,
+            plane1.cell.y() as f32,
+            plane1.cell.z() as f32,
         );
         // println!("{}", i);
         for j in 0..i {
             let plane2 = planes[j];
-            let norm2 = plane2.dir.get_normal::<i32>();
-            let norm2f = Vec3::new(norm2.x as f32, norm2.y as f32, norm2.z as f32);
+            let norm2 = plane2.dir.get_normal_i();
+            let norm2f = Vec3::new(norm2.x() as f32, norm2.y() as f32, norm2.z() as f32);
             let p2f = Vec3::new(
-                plane2.cell.x as f32,
-                plane2.cell.y as f32,
-                plane2.cell.z as f32,
+                plane2.cell.x() as f32,
+                plane2.cell.y() as f32,
+                plane2.cell.z() as f32,
             );
             if normal_cull(plane1, plane2) {
                 // println!("normal_cull");
@@ -52,10 +54,10 @@ fn setup_formfactors_single(planes: &PlanesSep, bitmap: &BlockMap) -> Vec<(u32, 
             }
 
             let dn = (p1f - p2f).normalize();
-            let d2 = (p1f - p2f).magnitude_squared(); // uhm, will the compiler optimize the two calls?
+            let d2 = (p1f - p2f).length_squared(); // uhm, will the compiler optimize the two calls?
 
-            let ff1 = 0.0f32.max(math::Matrix::dot(&norm1f, &(Vec3::new(0.0, 0.0, 0.0) - dn)));
-            let ff2 = 0.0f32.max(math::Matrix::dot(&norm2f, &dn));
+            let ff1 = 0.0f32.max(norm1f.dot(Vec3::zero() - dn));
+            let ff2 = 0.0f32.max(norm2f.dot(dn));
 
             let ff = (ff1 * ff2) / (3.1415 * d2);
             let dist_cull = ff < 5e-6;

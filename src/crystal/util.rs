@@ -1,18 +1,20 @@
-use super::{Bitmap, Point3i};
-use crate::math::prelude::*;
+// use super::{Bitmap, Point3i};
+use crate::crystal::map::Bitmap;
+use crate::crystal::math::prelude::*;
+use bevy::math::prelude::*;
 
 pub fn occluded(p0: Point3i, p1: Point3i, solid: &dyn Bitmap) -> bool {
     // 3d bresenham, ripped from http://www.cobrabytes.com/index.php?topic=1150.0
 
     // println!("{} {}", DisplayWrap::from(p0), DisplayWrap::from(p1));
 
-    let mut x0 = p0.x;
-    let mut y0 = p0.y;
-    let mut z0 = p0.z;
+    let mut x0 = p0.x();
+    let mut y0 = p0.y();
+    let mut z0 = p0.z();
 
-    let mut x1 = p1.x;
-    let mut y1 = p1.y;
-    let mut z1 = p1.z;
+    let mut x1 = p1.x();
+    let mut y1 = p1.y();
+    let mut z1 = p1.z();
 
     //'steep' xy Line, make longest delta x plane
     let swap_xy = (y1 - y0).abs() > (x1 - x0).abs();
@@ -118,5 +120,5 @@ impl Drop for ProfTimer {
 }
 
 pub fn vec_mul(v1: &Vec3, v2: &Vec3) -> Vec3 {
-    Vec3::new(v1.x * v2.x, v1.y * v2.y, v1.z * v2.z)
+    Vec3::new(v1.x() * v2.x(), v1.y() * v2.y(), v1.z() * v2.z())
 }
