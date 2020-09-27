@@ -13,9 +13,24 @@ mod crystal;
 mod fly_camera;
 mod quad_render;
 use crystal::ffs;
+use crystal::rad;
 use rand::{thread_rng, Rng};
 /// This example illustrates how to create a custom material asset and a shader that uses that material
 fn main() {
+    App::build()
+        .add_default_plugins()
+        .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_plugin(PrintDiagnosticsPlugin::default())
+        .add_plugin(fly_camera::FlyCameraPlugin)
+        .add_startup_stage("planes")
+        .add_startup_system_to_stage("planes", setup.system())
+        .add_startup_stage_after("planes", "renderer")
+        .add_plugin(quad_render::QuadRenderPlugin::default())
+        .add_system(swap_buffers.system())
+        .run();
+}
+
+fn setup(mut commands: Commands) {
     let bm = crystal::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
     let mut planes = crystal::PlanesSep::new();
     planes.create_planes(&*bm);
@@ -30,19 +45,28 @@ fn main() {
         }
     };
 
-    App::build()
-        .add_default_plugins()
-        .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        .add_plugin(PrintDiagnosticsPlugin::default())
-        .add_plugin(fly_camera::FlyCameraPlugin)
-        .add_resource(crystal::PlaneScene {
+    let num_planes = planes.num_planes();
+
+    commands
+        .insert_resource(crystal::PlaneScene {
             planes,
             blockmap: bm,
         })
-        .add_resource(extents)
-        .add_startup_system(setup.system())
-        .add_plugin(quad_render::QuadRenderPlugin::default())
-        .run();
+        .insert_resource(extents)
+        .insert_resource(rad::FrontBuf(rad::RadBuffer::new_with(
+            num_planes, 1.0, 0.5, 0.5,
+        )))
+        .insert_resource(rad::BackBuf(rad::RadBuffer::new_with(
+            num_planes, 0.5, 0.5, 1.0,
+        )));
+
+    for i in 0..num_planes {
+        commands.spawn(rad::PlaneBundle {
+            plane: rad::Plane { buf_index: i },
+        });
+    }
 }
 
-fn setup(mut commands: Commands) {}
+fn swap_buffers(mut front: ResMut<rad::FrontBuf>, mut back: ResMut<rad::BackBuf>) {
+    std::mem::swap(&mut front.0, &mut back.0);
+}

@@ -1,5 +1,7 @@
-use crate::crystal::map::Bitmap;
-use crate::{crystal, fly_camera};
+use crate::{
+    crystal::{self, map::Bitmap, rad},
+    fly_camera,
+};
 use bevy::{
     prelude::*,
     render::{
@@ -52,8 +54,8 @@ struct PlaneComponents {
     plane: Plane,
 }
 struct Plane {
-    mesh_handle: Handle<Mesh>,
-    indices: [u32; 4],
+    mesh_handle: Handle<Mesh>, // the mesh that contains the plane
+    indices: [u32; 4], // indices of the attributes that belong to this plane in 'mesh_handle'
 }
 
 fn setup(
@@ -64,6 +66,7 @@ fn setup(
     mut materials: ResMut<Assets<MyMaterial>>,
     mut render_graph: ResMut<RenderGraph>,
     planeScene: Res<crystal::PlaneScene>,
+    mut query: Query<(Entity, &rad::Plane)>,
 ) {
     // Create a new shader pipeline
     let pipeline_handle = pipelines.add(PipelineDescriptor::default_config(ShaderStages {
@@ -154,6 +157,12 @@ fn setup(
         ));
     }
 
+    let mut plane_entities = std::collections::HashMap::<usize, Entity>::new();
+    for (ent, plane) in &mut query.iter() {
+        plane_entities.insert(plane.buf_index, ent);
+    }
+
+    let mut num_planes = 0;
     let mut spawn_mesh = {
         // FIXME: why is type inference for 'planes' broken?
         |position, normal, uv, index, planes: Vec<u32>| {
@@ -179,12 +188,19 @@ fn setup(
                 }));
 
             for p in planes.iter() {
-                commands.spawn(PlaneComponents {
-                    plane: Plane {
-                        mesh_handle,
-                        indices: [p + 0, p + 1, p + 2, p + 3],
+                // glue local Plane component (ToDo: rename) to pre-existing 'plane' entities
+                commands.insert(
+                    *plane_entities
+                        .get(&num_planes)
+                        .expect("missing entity for plane index"),
+                    PlaneComponents {
+                        plane: Plane {
+                            mesh_handle,
+                            indices: [p + 0, p + 1, p + 2, p + 3],
+                        },
                     },
-                });
+                );
+                num_planes += 1;
             }
         }
     };
@@ -266,13 +282,46 @@ fn blink_system(mut meshes: ResMut<Assets<Mesh>>, plane: &Plane) {
     }
 }
 
+fn apply_frontbuf(
+    front_buf: Res<rad::FrontBuf>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    rad_plane: &rad::Plane,
+    plane: &Plane,
+) {
+    // read rgb value from rad frontbuffer
+    let r = front_buf.0.r[rad_plane.buf_index];
+    let g = front_buf.0.g[rad_plane.buf_index];
+    let b = front_buf.0.b[rad_plane.buf_index];
+
+    // apply to mesh (looks a bit goofy to do the mesh/attribute lookup per plane...)
+    let mesh = meshes
+        .get_mut(&plane.mesh_handle)
+        .expect("bad mesh_handle in Plane entitiy");
+
+    for a in &mut mesh.attributes {
+        if a.name == "Vertex_Normal" {
+            match &mut a.values {
+                VertexAttributeValues::Float3(ref mut vs) => {
+                    for i in plane.indices.iter() {
+                        vs[*i as usize][0] = r;
+                        vs[*i as usize][1] = g;
+                        vs[*i as usize][2] = b;
+                    }
+                }
+                _ => panic!("expected Vertex_Normal to be Float3"),
+            }
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct QuadRenderPlugin;
 
 impl Plugin for QuadRenderPlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app.add_startup_system(setup.system())
-            .add_system(blink_system.system())
+        app.add_startup_system_to_stage("renderer", setup.system())
+            // .add_system(blink_system.system())
+            .add_system(apply_frontbuf.system())
             .add_asset::<MyMaterial>();
     }
 }

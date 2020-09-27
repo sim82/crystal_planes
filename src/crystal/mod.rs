@@ -25,6 +25,7 @@ pub mod util;
 // mod buffer;
 pub mod map;
 pub mod math;
+pub mod rad;
 // mod scene;
 
 // pub use buffer::{aligned_vector_init, MutRadSlice, RadBuffer, RadSlice};
@@ -77,9 +78,3 @@ pub use map::{read_map, Bitmap, BlockMap, Dir, Plane, PlaneScene, PlanesSep};
 //         }
 //     }
 // }
-
-pub struct RadBuffer {
-    r: Vec<f32>,
-    g: Vec<f32>,
-    b: Vec<f32>,
-}

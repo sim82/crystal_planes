@@ -1,3 +1,5 @@
+// copy of https://github.com/mcpar-land/bevy_fly_camera with small fixes to make bevy 0.2 compatible. Use original package if possible
+
 use bevy::{input::mouse::MouseMotion, prelude::*, render::renderer::RenderResources};
 
 pub struct FlyCamera {
