@@ -409,7 +409,7 @@ pub fn read_map_slice(reader: &mut dyn std::io::BufRead, size: Vec2i) -> std::io
     Ok(MapSlice(slice))
 }
 
-pub fn read_map<P: AsRef<Path>>(filename: P) -> std::io::Result<Box<dyn Bitmap>> {
+pub fn read_map<P: AsRef<Path>>(filename: P) -> std::io::Result<Box<dyn Bitmap + Send + Sync>> {
     let file = File::open(filename)?;
 
     let mut reader = BufReader::new(file);
@@ -450,5 +450,5 @@ pub fn read_map<P: AsRef<Path>>(filename: P) -> std::io::Result<Box<dyn Bitmap>>
 
 pub struct PlaneScene {
     pub planes: PlanesSep,
-    pub blockmap: BlockMap,
+    pub blockmap: Box<dyn Bitmap + Send + Sync>,
 }

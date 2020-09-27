@@ -77,3 +77,9 @@ pub use map::{read_map, Bitmap, BlockMap, Dir, Plane, PlaneScene, PlanesSep};
 //         }
 //     }
 // }
+
+pub struct RadBuffer {
+    r: Vec<f32>,
+    g: Vec<f32>,
+    b: Vec<f32>,
+}
