@@ -50,8 +50,6 @@ fn setup(mut commands: Commands) {
     let num_planes = planes.num_planes();
 
     let front_buf = rad::spawn_rad_update(extents);
-    // let front_buf = rad::FrontBuf::new(rad::RadBuffer::new_with(num_planes, 1.0, 0.5, 0.5));
-    // let mut back_buf = rad::BackBuf(rad::RadBuffer::new_with(num_planes, 0.5, 0.5, 1.0));
 
     commands
         .insert_resource(crystal::PlaneScene {
@@ -66,14 +64,6 @@ fn setup(mut commands: Commands) {
             plane: rad::Plane { buf_index: i },
         });
     }
-
-    // std::thread::spawn(move || loop {
-    //     {
-    //         let mut front = front_buf.write();
-    //         std::mem::swap(&mut *front, &mut back_buf.0);
-    //     }
-    //     std::thread::sleep(std::time::Duration::from_millis(200));
-    // });
 }
 
 // fn swap_buffers(mut front: ResMut<rad::FrontBuf>, mut back: ResMut<rad::BackBuf>) {

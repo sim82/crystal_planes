@@ -62,6 +62,31 @@ pub struct Plane {
     pub buf_index: usize,
 }
 
+pub fn hsv_to_rgb(h: f32, s: f32, v: f32) -> Vec3 {
+    let h = if h == 360.0 { 0.0 } else { h / 60.0 };
+    let fract = h - h.floor();
+
+    let p = v * (1. - s);
+    let q = v * (1. - s * fract);
+    let t = v * (1. - s * (1. - fract));
+
+    if h >= 0. && h < 1. {
+        Vec3::new(v, t, p)
+    } else if h >= 1. && h < 2. {
+        Vec3::new(q, v, p)
+    } else if h >= 2. && h < 3. {
+        Vec3::new(p, v, t)
+    } else if h >= 3. && h < 4. {
+        Vec3::new(p, q, v)
+    } else if h >= 4. && h < 5. {
+        Vec3::new(t, p, v)
+    } else if h >= 5. && h < 6. {
+        Vec3::new(v, p, q)
+    } else {
+        Vec3::zero()
+    }
+}
+
 pub fn spawn_rad_update(extents: ffs::Extents) -> FrontBuf {
     let num_planes = extents.0.len();
     let front_buf = FrontBuf::new(RadBuffer::new_with(num_planes, 1.0, 0.5, 0.5));
@@ -89,16 +114,12 @@ pub fn spawn_rad_update(extents: ffs::Extents) -> FrontBuf {
 
     let mut last_emit_change = std::time::Instant::now();
     std::thread::spawn(move || loop {
-        if last_emit_change.elapsed() > std::time::Duration::from_secs(4) {
+        if last_emit_change.elapsed() > std::time::Duration::from_secs(1) {
             emit = (0..num_planes)
                 .into_iter()
                 .map(|_| {
                     if rand::thread_rng().gen::<f32>() > 0.95 {
-                        Vec3::new(
-                            rand::thread_rng().gen::<f32>(),
-                            rand::thread_rng().gen::<f32>(),
-                            rand::thread_rng().gen::<f32>(),
-                        )
+                        hsv_to_rgb(rand::thread_rng().gen_range(0f32, 360f32), 1f32, 1f32)
                     } else {
                         Vec3::zero()
                     }
@@ -109,6 +130,8 @@ pub fn spawn_rad_update(extents: ffs::Extents) -> FrontBuf {
         }
 
         {
+            // run one iteration of radiosity integration (aka. 'heavy lifting').
+            // holding only a read lock to front_buf, so gfx code can concurrently access it without blocking.
             let front = front_buf.read();
 
             let rad_out: Vec<(f32, f32, f32)> = (0..num_planes)
@@ -135,9 +158,23 @@ pub fn spawn_rad_update(extents: ffs::Extents) -> FrontBuf {
                 back_buf.0.b[i] = emit[i].z() + rad_b;
             }
 
-            // std::thread::sleep_ms(300);
+            // emit.into_par_iter().enumerate().map(|(i, emit)| {
+            //     emit + extents.0[i]
+            //         .iter()
+            //         .flat_map(|extent| {
+            //             extent.ffs.iter().enumerate().map(move |(j, ff)| {
+            //                 Vec3::new(
+            //                     front.r[j + extent.start as usize] * diffuse[i].x() * *ff,
+            //                     front.g[j + extent.start as usize] * diffuse[i].y() * *ff,
+            //                     front.b[j + extent.start as usize] * diffuse[i].z() * *ff,
+            //                 )
+            //             })
+            //         })
+            //         .fold(Vec3::zero(), |a, v| a + v);
+            // });
         }
         {
+            // swap back and front buffers. should be pretty much instant, so no blocking of gfx code.
             let mut front = front_buf.write();
             std::mem::swap(&mut *front, &mut back_buf.0);
         }

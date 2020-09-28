@@ -14,7 +14,7 @@ bincode = "*"
 image = "*"
 ndarray="*"
 rand = {version = "^0.7", features = ["small_rng"]}
-rayon="*"
+rayon="^1"
 rodio = "*"
 serde = { version = "1", features = ["derive"] }
 simdeez = "^1"
