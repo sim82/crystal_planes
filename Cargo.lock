@@ -1090,6 +1090,7 @@ dependencies = [
  "image",
  "ndarray",
  "rand",
+ "rayon",
  "rodio",
  "serde",
  "simdeez",

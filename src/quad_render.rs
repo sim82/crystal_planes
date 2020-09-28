@@ -65,7 +65,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<MyMaterial>>,
     mut render_graph: ResMut<RenderGraph>,
-    planeScene: Res<crystal::PlaneScene>,
+    plane_scene: Res<crystal::PlaneScene>,
     mut query: Query<(Entity, &rad::Plane)>,
 ) {
     // Create a new shader pipeline
@@ -118,7 +118,7 @@ fn setup(
         .with(fly_camera::FlyCamera::default());
 
     let mut meshes_tmp = Vec::new();
-    for p in planeScene.planes.planes_iter() {
+    for p in plane_scene.planes.planes_iter() {
         let point = &p.cell;
         let plane_trans = match p.dir {
             crystal::Dir::XyPos => Mat4::from_cols_array(&[
@@ -289,9 +289,10 @@ fn apply_frontbuf(
     plane: &Plane,
 ) {
     // read rgb value from rad frontbuffer
-    let r = front_buf.0.r[rad_plane.buf_index];
-    let g = front_buf.0.g[rad_plane.buf_index];
-    let b = front_buf.0.b[rad_plane.buf_index];
+    let buf = front_buf.read();
+    let r = buf.r[rad_plane.buf_index];
+    let g = buf.g[rad_plane.buf_index];
+    let b = buf.b[rad_plane.buf_index];
 
     // apply to mesh (looks a bit goofy to do the mesh/attribute lookup per plane...)
     let mesh = meshes
