@@ -1,7 +1,4 @@
-use crate::{
-    crystal::{self, map::Bitmap, rad},
-    fly_camera,
-};
+use crate::crystal::{self, map::Bitmap, rad};
 use bevy::{
     prelude::*,
     render::{
@@ -115,7 +112,10 @@ fn setup(
             )),
             ..Default::default()
         })
-        .with(fly_camera::FlyCamera::default());
+        .with(bevy_fly_camera::FlyCamera {
+            mouse_drag: true,
+            ..Default::default()
+        });
 
     let mut meshes_tmp = Vec::new();
     for p in plane_scene.planes.planes_iter() {

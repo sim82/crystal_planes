@@ -11,8 +11,8 @@ use bevy::{
         shader::{ShaderStage, ShaderStages},
     },
 };
+
 mod crystal;
-mod fly_camera;
 mod quad_render;
 use crystal::ffs;
 use crystal::rad;
@@ -23,7 +23,7 @@ fn main() {
         .add_default_plugins()
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(PrintDiagnosticsPlugin::default())
-        .add_plugin(fly_camera::FlyCameraPlugin)
+        .add_plugin(bevy_fly_camera::FlyCameraPlugin)
         .add_startup_stage("planes")
         .add_startup_system_to_stage("planes", setup.system())
         .add_startup_stage_after("planes", "renderer")
