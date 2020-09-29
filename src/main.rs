@@ -1,4 +1,8 @@
-use std::sync;
+use std::sync::{
+    self,
+    mpsc::{self, Sender},
+    Mutex,
+};
 
 use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, PrintDiagnosticsPlugin},
@@ -28,6 +32,7 @@ fn main() {
         .add_startup_system_to_stage("planes", setup.system())
         .add_startup_stage_after("planes", "renderer")
         .add_plugin(quad_render::QuadRenderPlugin::default())
+        .add_system(light_move_system.system())
         // .add_system(swap_buffers.system())
         .run();
 }
@@ -49,15 +54,16 @@ fn setup(mut commands: Commands) {
 
     let num_planes = planes.num_planes();
 
-    let front_buf = rad::spawn_rad_update(extents);
+    let (send, recv) = mpsc::channel();
+    let plane_scene = crystal::PlaneScene::new(planes, bm);
+    let front_buf = rad::spawn_rad_update(extents, plane_scene.clone(), recv);
 
     commands
-        .insert_resource(crystal::PlaneScene {
-            planes,
-            blockmap: bm,
-        })
+        .insert_resource(plane_scene)
         // .insert_resource(extents)
-        .insert_resource(front_buf.clone());
+        .insert_resource(front_buf.clone())
+        .insert_resource(Mutex::new(send))
+        .spawn((PointLight::default(),));
 
     for i in 0..num_planes {
         commands.spawn(rad::PlaneBundle {
@@ -66,6 +72,50 @@ fn setup(mut commands: Commands) {
     }
 }
 
-// fn swap_buffers(mut front: ResMut<rad::FrontBuf>, mut back: ResMut<rad::BackBuf>) {
-//     std::mem::swap(front.0.get_mut().unwrap(), &mut back.0);
-// }
+// TODO: build from default components
+struct PointLight {
+    pos: Vec3,
+    color: Vec3,
+}
+
+impl Default for PointLight {
+    fn default() -> Self {
+        PointLight {
+            pos: Vec3::new(40f32, 20f32, 40f32),
+            color: Vec3::new(1.0, 0.9, 0.8),
+        }
+    }
+}
+
+fn light_move_system(
+    keyboard_input: Res<Input<KeyCode>>,
+    rad_update_channel: Res<Mutex<Sender<rad::RadUpdate>>>,
+    mut point_light: Mut<PointLight>,
+) {
+    let mut m = Vec3::zero();
+    if keyboard_input.pressed(KeyCode::Left) {
+        m += Vec3::new(-1f32, 0f32, 0f32);
+    }
+    if keyboard_input.pressed(KeyCode::Right) {
+        m += Vec3::new(1f32, 0f32, 0f32);
+    }
+    if keyboard_input.pressed(KeyCode::Up) {
+        m += Vec3::new(0f32, 0f32, -1f32);
+    }
+    if keyboard_input.pressed(KeyCode::Down) {
+        m += Vec3::new(0f32, 0f32, 1f32);
+    }
+    println!("light move: {:?}", m);
+    if m != Vec3::zero() {
+        point_light.pos += m;
+        rad_update_channel
+            .lock()
+            .unwrap()
+            .send(rad::RadUpdate::PointLight(
+                0,
+                point_light.pos,
+                point_light.color,
+            ))
+            .unwrap();
+    }
+}

@@ -6,6 +6,7 @@ use std::{
     io::{BufRead, BufReader},
     iter::Iterator,
     path::Path,
+    sync::Arc,
 };
 
 use crate::crystal::math::prelude::*;
@@ -240,7 +241,7 @@ impl Cell for Point3i {
 pub struct Plane {
     pub vertices: [i32; NUM_PLANE_CORNERS],
     pub dir: Dir,
-    pub cell: Point3i,
+    pub cell: Vec3i,
 }
 
 impl Plane {
@@ -448,7 +449,17 @@ pub fn read_map<P: AsRef<Path>>(filename: P) -> std::io::Result<Box<dyn Bitmap +
     Ok(Box::new(bm))
 }
 
+#[derive(Clone)]
 pub struct PlaneScene {
-    pub planes: PlanesSep,
-    pub blockmap: Box<dyn Bitmap + Send + Sync>,
+    pub planes: Arc<PlanesSep>,
+    pub blockmap: Arc<Box<dyn Bitmap + Send + Sync>>,
+}
+
+impl PlaneScene {
+    pub fn new(planes: PlanesSep, blockmap: Box<dyn Bitmap + Send + Sync>) -> Self {
+        PlaneScene {
+            planes: Arc::new(planes),
+            blockmap: Arc::new(blockmap),
+        }
+    }
 }

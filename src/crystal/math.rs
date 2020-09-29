@@ -13,6 +13,9 @@ impl Vec3i {
     pub fn into_vec3(self) -> Vec3 {
         Vec3::new(self.0 as f32, self.1 as f32, self.2 as f32)
     }
+    pub fn from_vec3(v: &Vec3) -> Self {
+        Vec3i(v.x() as i32, v.y() as i32, v.z() as i32)
+    }
 
     pub fn x(&self) -> i32 {
         self.0
