@@ -158,6 +158,14 @@ pub fn spawn_rad_update(
 
     let mut emit = vec![Vec3::zero(); num_planes];
 
+    let int_per_iter = extents
+        .0
+        .iter()
+        .flat_map(|es| es.iter().map(|e| e.ffs.len()))
+        .sum::<usize>();
+
+    let mut int_sum = 0;
+    let mut last_stat_time = std::time::Instant::now();
     // let mut last_emit_change = std::time::Instant::now();
     std::thread::spawn(move || loop {
         // if last_emit_change.elapsed() > std::time::Duration::from_secs(1) {
@@ -214,7 +222,7 @@ pub fn spawn_rad_update(
                 back_buf.0.g[i] = emit[i].y() + rad_g;
                 back_buf.0.b[i] = emit[i].z() + rad_b;
             }
-
+            int_sum += int_per_iter;
             // emit.into_par_iter().enumerate().map(|(i, emit)| {
             //     emit + extents.0[i]
             //         .iter()
@@ -234,6 +242,12 @@ pub fn spawn_rad_update(
             // swap back and front buffers. should be pretty much instant, so no blocking of gfx code.
             let mut front = front_buf.write();
             std::mem::swap(&mut *front, &mut back_buf.0);
+        }
+        // too bad we dont run in a system... this could just use bevy diagnostics (can I hijack them into my own thread?)
+        if last_stat_time.elapsed() >= std::time::Duration::from_secs(1) {
+            println!("pint/s: {}", int_sum);
+            last_stat_time = std::time::Instant::now();
+            int_sum = 0;
         }
     });
     front_buf_ret
