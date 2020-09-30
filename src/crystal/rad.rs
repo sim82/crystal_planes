@@ -1,4 +1,4 @@
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{mpsc::Receiver, Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use super::{ffs, math::prelude::*, PlaneScene};
 use bevy::prelude::*;
@@ -78,8 +78,15 @@ pub fn hsv_to_rgb(h: f32, s: f32, v: f32) -> Vec3 {
     }
 }
 
-pub enum RadUpdate {
+pub enum RenderToRad {
     PointLight(usize, Vec3, Vec3),
+}
+
+pub enum RadToRender {
+    IterationDone {
+        num_int: usize,
+        duration: std::time::Duration,
+    },
 }
 
 pub fn apply_pointlight(
@@ -115,8 +122,8 @@ pub fn apply_pointlight(
 pub fn spawn_rad_update(
     extents: ffs::Extents,
     plane_scene: PlaneScene,
-    update_channel: std::sync::mpsc::Receiver<RadUpdate>,
-) -> FrontBuf {
+    render_to_rad_channel: Receiver<RenderToRad>,
+) -> (FrontBuf, Receiver<RadToRender>) {
     let num_planes = extents.0.len();
     let front_buf = FrontBuf::new(RadBuffer::new_with(num_planes, 1.0, 0.5, 0.5));
     let mut back_buf = BackBuf(RadBuffer::new_with(num_planes, 0.5, 0.5, 1.0));
@@ -166,6 +173,8 @@ pub fn spawn_rad_update(
 
     let mut int_sum = 0;
     let mut last_stat_time = std::time::Instant::now();
+
+    let (rad_to_render_channel, rand_to_render_recv) = std::sync::mpsc::channel();
     // let mut last_emit_change = std::time::Instant::now();
     std::thread::spawn(move || loop {
         // if last_emit_change.elapsed() > std::time::Duration::from_secs(1) {
@@ -186,13 +195,15 @@ pub fn spawn_rad_update(
         // }
 
         // only use last update of light 0 for now
-        match update_channel.try_iter().last() {
-            Some(RadUpdate::PointLight(id, pos, color)) if id == 0 => {
+        match render_to_rad_channel.try_iter().last() {
+            Some(RenderToRad::PointLight(id, pos, color)) if id == 0 => {
                 // println!("update: {} {:?}", id, pos);
                 apply_pointlight(&mut emit, &diffuse, &plane_scene, pos, color);
             }
             _ => (),
         }
+
+        let rad_start = std::time::Instant::now();
 
         {
             // run one iteration of radiosity integration (aka. 'heavy lifting').
@@ -243,12 +254,12 @@ pub fn spawn_rad_update(
             let mut front = front_buf.write();
             std::mem::swap(&mut *front, &mut back_buf.0);
         }
-        // too bad we dont run in a system... this could just use bevy diagnostics (can I hijack them into my own thread?)
-        if last_stat_time.elapsed() >= std::time::Duration::from_secs(1) {
-            println!("pint/s: {}", int_sum);
-            last_stat_time = std::time::Instant::now();
-            int_sum = 0;
-        }
+        rad_to_render_channel
+            .send(RadToRender::IterationDone {
+                num_int: int_per_iter,
+                duration: rad_start.elapsed(),
+            })
+            .unwrap();
     });
-    front_buf_ret
+    (front_buf_ret, rand_to_render_recv)
 }

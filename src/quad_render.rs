@@ -1,5 +1,8 @@
+use std::sync::{mpsc::Receiver, Mutex};
+
 use crate::crystal::{self, map::Bitmap, rad};
 use bevy::{
+    diagnostic::{Diagnostic, DiagnosticId, Diagnostics, PrintDiagnosticsPlugin},
     prelude::*,
     render::{
         mesh::{shape, VertexAttributeValues},
@@ -285,34 +288,69 @@ fn blink_system(mut meshes: ResMut<Assets<Mesh>>, plane: &Plane) {
 fn apply_frontbuf(
     front_buf: Res<rad::FrontBuf>,
     mut meshes: ResMut<Assets<Mesh>>,
-    rad_plane: &rad::Plane,
-    plane: &Plane,
+    rad_to_render: Res<Mutex<Receiver<rad::RadToRender>>>,
+    mut diagnostics: ResMut<Diagnostics>,
+    mut query: Query<(&rad::Plane, &Plane)>,
 ) {
-    // read rgb value from rad frontbuffer
-    let buf = front_buf.read();
-    let r = buf.r[rad_plane.buf_index];
-    let g = buf.g[rad_plane.buf_index];
-    let b = buf.b[rad_plane.buf_index];
-
-    // apply to mesh (looks a bit goofy to do the mesh/attribute lookup per plane...)
-    let mesh = meshes
-        .get_mut(&plane.mesh_handle)
-        .expect("bad mesh_handle in Plane entitiy");
-
-    for a in &mut mesh.attributes {
-        if a.name == "Vertex_Normal" {
-            match &mut a.values {
-                VertexAttributeValues::Float3(ref mut vs) => {
-                    for i in plane.indices.iter() {
-                        vs[*i as usize][0] = r;
-                        vs[*i as usize][1] = g;
-                        vs[*i as usize][2] = b;
-                    }
-                }
-                _ => panic!("expected Vertex_Normal to be Float3"),
+    let mut update = false;
+    for cmd in rad_to_render.lock().unwrap().try_iter() {
+        match cmd {
+            rad::RadToRender::IterationDone { num_int, duration } => {
+                diagnostics
+                    .add_measurement(RAD_INT_PER_SECOND, num_int as f64 / duration.as_secs_f64());
+                update = true;
             }
         }
     }
+
+    if !update {
+        return;
+    }
+    let mut mesh_opt = None;
+    let mut mesh_handle = Handle::<Mesh>::default();
+    for (rad_plane, plane) in &mut query.iter() {
+        // read rgb value from rad frontbuffer
+        let buf = front_buf.read();
+        let r = buf.r[rad_plane.buf_index];
+        let g = buf.g[rad_plane.buf_index];
+        let b = buf.b[rad_plane.buf_index];
+
+        // consecutive planes will mostly be located in the same mesh
+        if mesh_handle != plane.mesh_handle {
+            mesh_handle = plane.mesh_handle;
+            mesh_opt = meshes.get_mut(&plane.mesh_handle);
+        }
+
+        if let Some(ref mut mesh) = mesh_opt {
+            for a in &mut mesh.attributes {
+                if a.name == "Vertex_Normal" {
+                    match &mut a.values {
+                        VertexAttributeValues::Float3(ref mut vs) => {
+                            for i in plane.indices.iter() {
+                                vs[*i as usize][0] = r;
+                                vs[*i as usize][1] = g;
+                                vs[*i as usize][2] = b;
+                            }
+                        }
+                        _ => panic!("expected Vertex_Normal to be Float3"),
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub const RAD_INT_PER_SECOND: DiagnosticId =
+    DiagnosticId::from_u128(337040787172757619024841343456040760896);
+
+fn setup_diagnostic_system(mut diagnostics: ResMut<Diagnostics>) {
+    // Diagnostics must be initialized before measurements can be added.
+    // In general it's a good idea to set them up in a "startup system".
+    diagnostics.add(Diagnostic::new(
+        RAD_INT_PER_SECOND,
+        "rad_int_per_second",
+        10,
+    ));
 }
 
 #[derive(Default)]
@@ -321,6 +359,7 @@ pub struct QuadRenderPlugin;
 impl Plugin for QuadRenderPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.add_startup_system_to_stage("renderer", setup.system())
+            .add_startup_system(setup_diagnostic_system.system())
             // .add_system(blink_system.system())
             .add_system(apply_frontbuf.system())
             .add_asset::<MyMaterial>();
