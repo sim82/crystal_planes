@@ -149,7 +149,7 @@ fn setup(
                 0.0, 1.0,
             ]),
         };
-        println!("spawn");
+        // println!("spawn");
 
         meshes_tmp.push((
             Mesh::from(shape::Quad {

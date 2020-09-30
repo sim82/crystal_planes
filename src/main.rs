@@ -45,22 +45,14 @@ fn setup(mut commands: Commands) {
     let mut planes = crystal::PlanesSep::new();
     planes.create_planes(&*bm);
 
-    let extents = match ffs::Extents::load("extents.bin") {
-        Some(extents) => extents,
-        None => {
-            let formfactors = ffs::split_formfactors(ffs::setup_formfactors(&planes, &*bm));
-            let extents = ffs::Extents(ffs::to_extents(&formfactors));
-            extents.write("extents.bin");
-            extents
-        }
-    };
+
 
     let num_planes = planes.num_planes();
 
     let (render_to_rad_send, render_to_rad_recv) = mpsc::channel();
     let plane_scene = crystal::PlaneScene::new(planes, bm);
     let (front_buf, rad_to_render_recv) =
-        rad::spawn_rad_update(extents, plane_scene.clone(), render_to_rad_recv);
+        rad::spawn_rad_update( plane_scene.clone(), render_to_rad_recv);
 
     commands
         .insert_resource(plane_scene)
