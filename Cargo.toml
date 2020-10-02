@@ -10,7 +10,7 @@ edition = "2018"
 # bevy = {git="https://github.com/bevyengine/bevy.git", branch="master"}
 arrayvec = "^0.5"
 bevy = "^0.2"
-bevy_fly_camera={path="bevy_fly_camera"}
+bevy_fly_camera={git="https://github.com/sim82/bevy_fly_camera.git", branch="master"}
 bincode = "*"
 image = "*"
 ndarray="*"

@@ -117,6 +117,7 @@ fn setup(
         })
         .with(bevy_fly_camera::FlyCamera {
             mouse_drag: true,
+            sensitivity: 8.0,
             ..Default::default()
         });
 
