@@ -25,7 +25,7 @@ fn normal_cull(pl1: &Plane, pl2: &Plane) -> bool {
         || (d1 == Dir::ZxPos && d2 == Dir::ZxNeg && p1.y() > p2.y())
 }
 
-fn setup_formfactors_single(planes: &PlanesSep, bitmap: &dyn Bitmap) -> Vec<(u32, u32, f32)> {
+pub fn setup_formfactors(planes: &PlanesSep, bitmap: &dyn Bitmap) -> Vec<(u32, u32, f32)> {
     let planes = planes.planes_iter().collect::<Vec<&Plane>>();
     println!("num planes: {}", planes.len());
     let mut ffs = Vec::new();
@@ -63,21 +63,74 @@ fn setup_formfactors_single(planes: &PlanesSep, bitmap: &dyn Bitmap) -> Vec<(u32
 
             if !dist_cull && !util::occluded(plane1.cell + norm1, plane2.cell + norm2, bitmap) {
                 ffs.push((i as u32, j as u32, ff));
+                ffs.push((j as u32, i as u32, ff));
             }
         }
     }
-
+    println!("generated formfactors: {}", ffs.len());
     ffs
 }
 
-pub fn setup_formfactors(planes: &PlanesSep, bitmap: &dyn Bitmap) -> Vec<(u32, u32, f32)> {
-    let mut ffs = setup_formfactors_single(planes, bitmap);
+pub fn generate_formfactors(
+    planes: &PlanesSep,
+    bitmap: std::sync::Arc<Box<dyn Bitmap + Send + Sync>>,
+) -> std::sync::mpsc::Receiver<(u32, u32, f32)> {
+    let (send, recv) = std::sync::mpsc::channel();
 
-    println!("num ffs: {}", ffs.len());
+    let planes = planes.planes_iter().cloned().collect::<Vec<Plane>>();
+    std::thread::spawn(move || {
+        println!("num planes: {}", planes.len());
+        for (i, plane1) in planes.iter().enumerate() {
+            let norm1 = plane1.dir.get_normal_i();
+            let norm1f = Vec3::new(norm1.x() as f32, norm1.y() as f32, norm1.z() as f32);
+            let p1f = Vec3::new(
+                plane1.cell.x() as f32,
+                plane1.cell.y() as f32,
+                plane1.cell.z() as f32,
+            );
+            // println!("{}", i);
+            for j in 0..i {
+                let plane2 = &planes[j];
+                let norm2 = plane2.dir.get_normal_i();
+                let norm2f = Vec3::new(norm2.x() as f32, norm2.y() as f32, norm2.z() as f32);
+                let p2f = Vec3::new(
+                    plane2.cell.x() as f32,
+                    plane2.cell.y() as f32,
+                    plane2.cell.z() as f32,
+                );
+                if normal_cull(plane1, &plane2) {
+                    // println!("normal_cull");
+                    continue;
+                }
 
-    let mut ffs2 = ffs.iter().map(|(i, j, ff)| (*j, *i, *ff)).collect();
+                let dn = (p1f - p2f).normalize();
+                let d2 = (p1f - p2f).length_squared(); // uhm, will the compiler optimize the two calls?
 
-    ffs.append(&mut ffs2);
+                let ff1 = 0.0f32.max(norm1f.dot(Vec3::zero() - dn));
+                let ff2 = 0.0f32.max(norm2f.dot(dn));
+
+                let ff = (ff1 * ff2) / (3.1415 * d2);
+                let dist_cull = ff < 5e-6;
+
+                if !dist_cull
+                    && !util::occluded(plane1.cell + norm1, plane2.cell + norm2, &**bitmap)
+                {
+                    send.send((i as u32, j as u32, ff)).unwrap();
+                    send.send((j as u32, j as u32, ff)).unwrap();
+                }
+            }
+        }
+        println!("generated formfactors");
+    });
+    recv
+}
+
+pub fn sort_formfactors(mut ffs: Vec<(u32, u32, f32)>) -> Vec<(u32, u32, f32)> {
+    // println!("num ffs: {}", ffs.len());
+
+    // let mut ffs2 = ffs.iter().map(|(i, j, ff)| (*j, *i, *ff)).collect();
+
+    // ffs.append(&mut ffs2);
 
     ffs.sort_unstable_by(
         |l: &(u32, u32, f32), r: &(u32, u32, f32)| match l.0.cmp(&r.0) {
@@ -114,14 +167,14 @@ fn write_ffs_debug(ffs: &Vec<(u32, u32, f32)>) {
     println!("done");
 }
 
-pub fn split_formfactors(ff_in: Vec<(u32, u32, f32)>) -> Vec<Vec<(u32, f32)>> {
+pub fn split_formfactors(ff_in: &Vec<(u32, u32, f32)>) -> Vec<Vec<(u32, f32)>> {
     let num = ff_in.iter().map(|(i, _, _)| i).max().unwrap() + 1;
 
     let mut ff_out = vec![Vec::new(); num as usize];
     for (i, j, ff) in ff_in.iter() {
         ff_out[*i as usize].push((*j, *ff));
     }
-
+    println!("split formfactors");
     ff_out
 }
 

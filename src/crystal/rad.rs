@@ -132,6 +132,8 @@ struct RadData {
     emit: Vec<Vec3>,
     diffuse: Vec<Vec3>,
     extents: Option<ffs::Extents>,
+    formfactors: Option<Vec<(u32, u32, f32)>>,
+    ff_recv: Option<Mutex<Receiver<(u32, u32, f32)>>>,
     int_sum: usize,
 }
 
@@ -169,6 +171,8 @@ impl RadData {
             emit,
             diffuse,
             extents: None,
+            formfactors: None,
+            ff_recv: None,
             int_sum: 0,
         }
     }
@@ -183,26 +187,64 @@ impl RadThread for RadData {
         let (rad_to_render_channel, rand_to_render_recv) = std::sync::mpsc::channel();
         // let mut last_emit_change = std::time::Instant::now();
         std::thread::spawn(move || {
-            self.extents = match ffs::Extents::load("extents.bin") {
-                Some(extents) => Some(extents),
+            match ffs::Extents::load("extents.bin") {
+                Some(extents) => self.extents = Some(extents),
                 None => {
-                    let formfactors = ffs::split_formfactors(ffs::setup_formfactors(
+                    // let formfactors = ffs::setup_formfactors(
+                    //     &self.plane_scene.planes,
+                    //     &**self.plane_scene.blockmap,
+                    // );
+                    // self.formfactors = Some(ffs::sort_formfactors(formfactors));
+                    // let formfactors = ffs::split_formfactors(self.formfactors.as_ref().unwrap());
+
+                    self.ff_recv = Some(Mutex::new(ffs::generate_formfactors(
                         &self.plane_scene.planes,
-                        &**self.plane_scene.blockmap,
-                    ));
-                    let extents = ffs::Extents(ffs::to_extents(&formfactors));
-                    extents.write("extents.bin");
-                    Some(extents)
+                        self.plane_scene.blockmap.clone(),
+                    )));
+                    // let extents = ffs::Extents(ffs::to_extents(&formfactors));
+                    // extents.write("extents.bin");
                 }
             };
-            let extents = self.extents.as_ref().unwrap();
+            // let extents = self.extents.as_ref().unwrap();
 
-            let int_per_iter = extents
-                .0
-                .iter()
-                .flat_map(|es| es.iter().map(|e| e.ffs.len()))
-                .sum::<usize>();
+            // let int_per_iter = extents
+            //     .0
+            //     .iter()
+            //     .flat_map(|es| es.iter().map(|e| e.ffs.len()))
+            //     .sum::<usize>();
+            let int_per_iter = 0;
             loop {
+                if let Some(recv) = self.ff_recv.as_ref() {
+                    let recv = recv.lock().unwrap();
+
+                    let now = std::time::Instant::now();
+                    while now.elapsed() < std::time::Duration::from_millis(10) {
+                        match recv.try_recv() {
+                            Ok(ff) => {
+                                // println!("ff: {:?}", ff);
+                                let formfactors =
+                                    self.formfactors.get_or_insert_with(|| Vec::new());
+                                formfactors.push(ff)
+                            }
+                            Err(std::sync::mpsc::TryRecvError::Empty) => {
+                                // println!("empty");
+                                break;
+                            }
+                            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                                // println!("done");
+                                let formfactors =
+                                    self.formfactors.get_or_insert_with(|| Vec::new());
+                                let formfactors = ffs::sort_formfactors(formfactors.clone());
+                                let formfactors = ffs::split_formfactors(&formfactors);
+                                let extents = ffs::Extents(ffs::to_extents(&formfactors));
+                                extents.write("extents.bin");
+                                self.extents = Some(extents);
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 // only use last update of light 0 for now
                 match self.render_to_rad_channel.lock().unwrap().try_iter().last() {
                     Some(RenderToRad::PointLight(id, pos, color)) if id == 0 => {
@@ -222,6 +264,8 @@ impl RadThread for RadData {
                 if self.extents.is_some() {
                     self.rad_iter_extents();
                     self.int_sum += int_per_iter;
+                } else if self.formfactors.is_some() {
+                    self.rad_iter_raw_formfactors();
                 }
 
                 {
@@ -241,6 +285,35 @@ impl RadThread for RadData {
     }
 }
 impl RadData {
+    fn rad_iter_raw_formfactors(&mut self) {
+        let r = &mut self.back_buf.0.r;
+        let g = &mut self.back_buf.0.g;
+        let b = &mut self.back_buf.0.b;
+        for i in 0..r.len() {
+            // FIXME: find out how to inplace set all Vec elements.
+            r[i] = 0f32;
+            g[i] = 0f32;
+            b[i] = 0f32;
+        }
+        let formfactors = self.formfactors.as_ref().unwrap();
+
+        let front = self.front_buf.read();
+        println!("len: {} {}", r.len(), front.r.len());
+        for (i, j, ff) in formfactors {
+            let i = *i as usize;
+            let j = *j as usize;
+            let diffuse = self.diffuse[i];
+            r[i] += front.r[j] * diffuse.x() * *ff;
+            g[i] += front.g[j] * diffuse.y() * *ff;
+            b[i] += front.b[j] * diffuse.z() * *ff;
+        }
+        for i in 0..r.len() {
+            self.back_buf.0.r[i] += self.emit[i].x();
+            self.back_buf.0.g[i] += self.emit[i].y();
+            self.back_buf.0.b[i] += self.emit[i].z();
+        }
+    }
+
     fn rad_iter_extents(&mut self) {
         let extents = self.extents.as_ref().unwrap();
         // run one iteration of radiosity integration (aka. 'heavy lifting').
