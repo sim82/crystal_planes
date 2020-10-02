@@ -1,5 +1,4 @@
 use std::sync::{
-    self,
     mpsc::{self, Sender},
     Mutex,
 };
@@ -7,20 +6,14 @@ use std::sync::{
 use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, PrintDiagnosticsPlugin},
     prelude::*,
-    render::{
-        mesh::{shape, VertexAttributeValues},
-        pipeline::{DynamicBinding, PipelineDescriptor, PipelineSpecialization, RenderPipeline},
-        render_graph::{base, AssetRenderResourcesNode, RenderGraph},
-        renderer::RenderResources,
-        shader::{ShaderStage, ShaderStages},
-    },
+    render::mesh::shape,
 };
 
 mod crystal;
 mod quad_render;
-use crystal::ffs;
+
 use crystal::rad;
-use rand::{thread_rng, Rng};
+
 /// This example illustrates how to create a custom material asset and a shader that uses that material
 fn main() {
     App::build()
@@ -45,14 +38,12 @@ fn setup(mut commands: Commands) {
     let mut planes = crystal::PlanesSep::new();
     planes.create_planes(&*bm);
 
-
-
     let num_planes = planes.num_planes();
 
     let (render_to_rad_send, render_to_rad_recv) = mpsc::channel();
     let plane_scene = crystal::PlaneScene::new(planes, bm);
     let (front_buf, rad_to_render_recv) =
-        rad::spawn_rad_update( plane_scene.clone(), render_to_rad_recv);
+        rad::spawn_rad_update(plane_scene.clone(), render_to_rad_recv);
 
     commands
         .insert_resource(plane_scene)
@@ -139,6 +130,7 @@ struct RadPointLight {
     color: Vec3,
 }
 
+#[allow(dead_code)]
 struct PointLight {
     pos: Vec3,
     color: Vec3,
@@ -153,7 +145,7 @@ impl Default for PointLight {
     }
 }
 
-fn light_move_system(
+fn _light_move_system(
     keyboard_input: Res<Input<KeyCode>>,
     rad_update_channel: Res<Mutex<Sender<rad::RenderToRad>>>,
     mut point_light: Mut<PointLight>,

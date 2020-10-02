@@ -1,8 +1,8 @@
 use std::sync::{mpsc::Receiver, Mutex};
 
-use crate::crystal::{self, map::Bitmap, rad};
+use crate::crystal::{self, rad};
 use bevy::{
-    diagnostic::{Diagnostic, DiagnosticId, Diagnostics, PrintDiagnosticsPlugin},
+    diagnostic::{Diagnostic, DiagnosticId, Diagnostics},
     prelude::*,
     render::{
         mesh::{shape, VertexAttributeValues},
@@ -262,9 +262,9 @@ fn setup(
     spawn_mesh(position, normal, uv, index, planes);
 }
 
-fn blink_system(mut meshes: ResMut<Assets<Mesh>>, plane: &Plane) {
+fn _blink_system(mut meshes: ResMut<Assets<Mesh>>, plane: &Plane) {
     // println!("blink");
-    let mut mesh = meshes
+    let mesh = meshes
         .get_mut(&plane.mesh_handle)
         .expect("bad mesh_handle in Plane entitiy");
 

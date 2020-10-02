@@ -1,8 +1,7 @@
-use crate::crystal::math::prelude::*;
 use crate::crystal::util;
 use bevy::math::prelude::*;
 
-use super::{Bitmap, BlockMap, Dir, Plane, PlanesSep};
+use super::{Bitmap, Dir, Plane, PlanesSep};
 use image::ImageBuffer;
 use std::{
     cmp::Ordering,
@@ -139,7 +138,7 @@ impl Extent {
             ffs: ffs,
         }
     }
-
+    #[allow(dead_code)]
     pub fn split_aligned(&self, alignments: &[usize]) -> Vec<Extent> {
         let first = self.start as usize;
         let mut i = first;

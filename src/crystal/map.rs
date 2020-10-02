@@ -1,6 +1,5 @@
 use crate::crystal::math::prelude::*;
 use bevy::prelude::*;
-use core::{fmt, ops::*};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -8,8 +7,6 @@ use std::{
     path::Path,
     sync::Arc,
 };
-
-use crate::crystal::math::prelude::*;
 
 pub type BlockMap = ndarray::Array3<bool>;
 const NUM_PLANE_CORNERS: usize = 4;

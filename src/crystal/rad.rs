@@ -1,8 +1,8 @@
-use std::sync::{mpsc::Receiver, Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{mpsc::Receiver, Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use super::{ffs, math::prelude::*, PlaneScene};
 use bevy::prelude::*;
-use rand::Rng;
+
 use rayon::prelude::*;
 
 pub struct RadBuffer {
@@ -12,14 +12,6 @@ pub struct RadBuffer {
 }
 
 impl RadBuffer {
-    pub fn new(size: usize) -> RadBuffer {
-        RadBuffer {
-            r: vec![0.0; size],
-            g: vec![0.0; size],
-            b: vec![0.0; size],
-        }
-    }
-
     pub fn new_with(size: usize, r: f32, g: f32, b: f32) -> Self {
         RadBuffer {
             r: vec![r; size],
@@ -53,6 +45,7 @@ pub struct Plane {
     pub buf_index: usize,
 }
 
+#[allow(dead_code)]
 pub fn hsv_to_rgb(h: f32, s: f32, v: f32) -> Vec3 {
     let h = if h == 360.0 { 0.0 } else { h / 60.0 };
     let fract = h - h.floor();
@@ -123,155 +116,159 @@ pub fn spawn_rad_update(
     plane_scene: PlaneScene,
     render_to_rad_channel: Receiver<RenderToRad>,
 ) -> (FrontBuf, Receiver<RadToRender>) {
-    let num_planes = plane_scene.planes.planes.len();
-    let front_buf = FrontBuf::new(RadBuffer::new_with(num_planes, 1.0, 0.5, 0.5));
-    let mut back_buf = BackBuf(RadBuffer::new_with(num_planes, 0.5, 0.5, 1.0));
+    let rad_data = RadData::new(plane_scene, render_to_rad_channel);
+    let front_buf = rad_data.front_buf.clone();
+    let rad_to_render = rad_data.spawn();
 
-    let front_buf_ret = front_buf.clone();
+    (front_buf, rad_to_render)
+}
 
-    let mut diffuse = vec![Vec3::new(1.0, 1.0, 1.0); num_planes];
+struct RadData {
+    plane_scene: PlaneScene,
+    render_to_rad_channel: Mutex<Receiver<RenderToRad>>,
+    num_planes: usize,
+    back_buf: BackBuf,
+    front_buf: FrontBuf,
+    emit: Vec<Vec3>,
+    diffuse: Vec<Vec3>,
+    extents: Option<ffs::Extents>,
+    int_sum: usize,
+}
 
-    let color1 = Vec3::new(1f32, 0.5f32, 0f32);
-    let color2 = Vec3::new(0f32, 1f32, 0f32);
-    for (i, plane) in plane_scene.planes.planes_iter().enumerate() {
-        if ((plane.cell.y()) / 2) % 2 == 1 {
-            continue;
+impl RadData {
+    pub fn new(plane_scene: PlaneScene, render_to_rad_channel: Receiver<RenderToRad>) -> RadData {
+        let num_planes = plane_scene.planes.planes.len();
+        let front_buf = FrontBuf::new(RadBuffer::new_with(num_planes, 1.0, 0.5, 0.5));
+        let back_buf = BackBuf(RadBuffer::new_with(num_planes, 0.5, 0.5, 1.0));
+
+        let mut diffuse = vec![Vec3::new(1.0, 1.0, 1.0); num_planes];
+
+        let color1 = Vec3::new(1f32, 0.5f32, 0f32);
+        let color2 = Vec3::new(0f32, 1f32, 0f32);
+        for (i, plane) in plane_scene.planes.planes_iter().enumerate() {
+            if ((plane.cell.y()) / 2) % 2 == 1 {
+                continue;
+            }
+            diffuse[i] = match plane.dir {
+                super::Dir::XyPos => color1,
+                super::Dir::XyNeg => color2,
+                super::Dir::YzPos | super::Dir::YzNeg => Vec3::new(0.8f32, 0.8f32, 0.8f32),
+                _ => Vec3::new(1f32, 1f32, 1f32),
+                // let color = hsv_to_rgb(rng.gen_range(0.0, 360.0), 1.0, 1.0); //random::<f32>(), 1.0, 1.0);
+                // scene.diffuse[i] = Vector3::new(color.0, color.1, color.2);
+            }
         }
-        diffuse[i] = match plane.dir {
-            super::Dir::XyPos => color1,
-            super::Dir::XyNeg => color2,
-            super::Dir::YzPos | super::Dir::YzNeg => Vec3::new(0.8f32, 0.8f32, 0.8f32),
-            _ => Vec3::new(1f32, 1f32, 1f32),
-            // let color = hsv_to_rgb(rng.gen_range(0.0, 360.0), 1.0, 1.0); //random::<f32>(), 1.0, 1.0);
-            // scene.diffuse[i] = Vector3::new(color.0, color.1, color.2);
+        let emit = vec![Vec3::zero(); num_planes];
+
+        RadData {
+            plane_scene,
+            render_to_rad_channel: Mutex::new(render_to_rad_channel),
+            num_planes,
+            back_buf,
+            front_buf,
+            emit,
+            diffuse,
+            extents: None,
+            int_sum: 0,
         }
     }
+}
 
-    // let mut emit: Vec<Vec3> = (0..num_planes)
-    //     .into_iter()
-    //     .map(|_| {
-    //         if rand::thread_rng().gen::<f32>() > 0.95 {
-    //             Vec3::new(
-    //                 rand::thread_rng().gen::<f32>(),
-    //                 rand::thread_rng().gen::<f32>(),
-    //                 rand::thread_rng().gen::<f32>(),
-    //             )
-    //         } else {
-    //             Vec3::zero()
-    //         }
-    //     })
-    //     .collect();
+trait RadThread {
+    fn spawn(self) -> Receiver<RadToRender>;
+}
 
-    let mut emit = vec![Vec3::zero(); num_planes];
-
-    let mut int_sum = 0;
-    let mut last_stat_time = std::time::Instant::now();
-
-    let (rad_to_render_channel, rand_to_render_recv) = std::sync::mpsc::channel();
-    // let mut last_emit_change = std::time::Instant::now();
-    std::thread::spawn(move || {
-        let extents = match ffs::Extents::load("extents.bin") {
-            Some(extents) => extents,
-            None => {
-                let formfactors = ffs::split_formfactors(ffs::setup_formfactors(
-                    &plane_scene.planes,
-                    &**plane_scene.blockmap,
-                ));
-                let extents = ffs::Extents(ffs::to_extents(&formfactors));
-                extents.write("extents.bin");
-                extents
-            }
-        };
-        let int_per_iter = extents
-            .0
-            .iter()
-            .flat_map(|es| es.iter().map(|e| e.ffs.len()))
-            .sum::<usize>();
-        loop {
-            // if last_emit_change.elapsed() > std::time::Duration::from_secs(1) {
-            //     emit = (0..num_planes)
-            //         .into_iter()
-            //         .enumerate()
-            //         .map(|(i, _)| {
-            //             if rand::thread_rng().gen::<f32>() > 0.95 {
-            //                 //hsv_to_rgb(rand::thread_rng().gen_range(0f32, 360f32), 1f32, 1f32)
-            //                 diffuse[i]
-            //             } else {
-            //                 Vec3::zero()
-            //             }
-            //         })
-            //         .collect();
-
-            //     last_emit_change = std::time::Instant::now();
-            // }
-
-            // only use last update of light 0 for now
-            match render_to_rad_channel.try_iter().last() {
-                Some(RenderToRad::PointLight(id, pos, color)) if id == 0 => {
-                    // println!("update: {} {:?}", id, pos);
-                    apply_pointlight(&mut emit, &diffuse, &plane_scene, pos, color);
+impl RadThread for RadData {
+    fn spawn(mut self) -> Receiver<RadToRender> {
+        let (rad_to_render_channel, rand_to_render_recv) = std::sync::mpsc::channel();
+        // let mut last_emit_change = std::time::Instant::now();
+        std::thread::spawn(move || {
+            self.extents = match ffs::Extents::load("extents.bin") {
+                Some(extents) => Some(extents),
+                None => {
+                    let formfactors = ffs::split_formfactors(ffs::setup_formfactors(
+                        &self.plane_scene.planes,
+                        &**self.plane_scene.blockmap,
+                    ));
+                    let extents = ffs::Extents(ffs::to_extents(&formfactors));
+                    extents.write("extents.bin");
+                    Some(extents)
                 }
-                _ => (),
-            }
+            };
+            let extents = self.extents.as_ref().unwrap();
 
-            let rad_start = std::time::Instant::now();
+            let int_per_iter = extents
+                .0
+                .iter()
+                .flat_map(|es| es.iter().map(|e| e.ffs.len()))
+                .sum::<usize>();
+            loop {
+                // only use last update of light 0 for now
+                match self.render_to_rad_channel.lock().unwrap().try_iter().last() {
+                    Some(RenderToRad::PointLight(id, pos, color)) if id == 0 => {
+                        // println!("update: {} {:?}", id, pos);
+                        apply_pointlight(
+                            &mut self.emit,
+                            &self.diffuse,
+                            &self.plane_scene,
+                            pos,
+                            color,
+                        );
+                    }
+                    _ => (),
+                }
 
-            {
-                // run one iteration of radiosity integration (aka. 'heavy lifting').
-                // holding only a read lock to front_buf, so gfx code can concurrently access it without blocking.
-                let front = front_buf.read();
+                let rad_start = std::time::Instant::now();
+                if self.extents.is_some() {
+                    self.rad_iter_extents();
+                    self.int_sum += int_per_iter;
+                }
 
-                let rad_out: Vec<(f32, f32, f32)> = (0..num_planes)
-                    .into_par_iter()
-                    .map(|i| {
-                        let mut rad_r = 0f32;
-                        let mut rad_g = 0f32;
-                        let mut rad_b = 0f32;
-                        let diffuse = diffuse[i];
-                        for extent in &extents.0[i] {
-                            for (j, ff) in extent.ffs.iter().enumerate() {
-                                rad_r += front.r[j + extent.start as usize] * diffuse.x() * *ff;
-                                rad_g += front.g[j + extent.start as usize] * diffuse.y() * *ff;
-                                rad_b += front.b[j + extent.start as usize] * diffuse.z() * *ff;
-                            }
-                        }
-                        (rad_r, rad_g, rad_b)
+                {
+                    // swap back and front buffers. should be pretty much instant, so no blocking of gfx code.
+                    let mut front = self.front_buf.write();
+                    std::mem::swap(&mut *front, &mut self.back_buf.0);
+                }
+                rad_to_render_channel
+                    .send(RadToRender::IterationDone {
+                        num_int: int_per_iter,
+                        duration: rad_start.elapsed(),
                     })
-                    .collect();
+                    .unwrap();
+            }
+        });
+        rand_to_render_recv
+    }
+}
+impl RadData {
+    fn rad_iter_extents(&mut self) {
+        let extents = self.extents.as_ref().unwrap();
+        // run one iteration of radiosity integration (aka. 'heavy lifting').
+        // holding only a read lock to front_buf, so gfx code can concurrently access it without blocking.
+        let front = self.front_buf.read();
 
-                for (i, (rad_r, rad_g, rad_b)) in rad_out.iter().enumerate() {
-                    back_buf.0.r[i] = emit[i].x() + rad_r;
-                    back_buf.0.g[i] = emit[i].y() + rad_g;
-                    back_buf.0.b[i] = emit[i].z() + rad_b;
+        let rad_out: Vec<(f32, f32, f32)> = (0..self.num_planes)
+            .into_par_iter()
+            .map(|i| {
+                let mut rad_r = 0f32;
+                let mut rad_g = 0f32;
+                let mut rad_b = 0f32;
+                let diffuse = self.diffuse[i];
+                for extent in &extents.0[i] {
+                    for (j, ff) in extent.ffs.iter().enumerate() {
+                        rad_r += front.r[j + extent.start as usize] * diffuse.x() * *ff;
+                        rad_g += front.g[j + extent.start as usize] * diffuse.y() * *ff;
+                        rad_b += front.b[j + extent.start as usize] * diffuse.z() * *ff;
+                    }
                 }
-                int_sum += int_per_iter;
-                // emit.into_par_iter().enumerate().map(|(i, emit)| {
-                //     emit + extents.0[i]
-                //         .iter()
-                //         .flat_map(|extent| {
-                //             extent.ffs.iter().enumerate().map(move |(j, ff)| {
-                //                 Vec3::new(
-                //                     front.r[j + extent.start as usize] * diffuse[i].x() * *ff,
-                //                     front.g[j + extent.start as usize] * diffuse[i].y() * *ff,
-                //                     front.b[j + extent.start as usize] * diffuse[i].z() * *ff,
-                //                 )
-                //             })
-                //         })
-                //         .fold(Vec3::zero(), |a, v| a + v);
-                // });
-            }
-            {
-                // swap back and front buffers. should be pretty much instant, so no blocking of gfx code.
-                let mut front = front_buf.write();
-                std::mem::swap(&mut *front, &mut back_buf.0);
-            }
-            rad_to_render_channel
-                .send(RadToRender::IterationDone {
-                    num_int: int_per_iter,
-                    duration: rad_start.elapsed(),
-                })
-                .unwrap();
+                (rad_r, rad_g, rad_b)
+            })
+            .collect();
+
+        for (i, (rad_r, rad_g, rad_b)) in rad_out.iter().enumerate() {
+            self.back_buf.0.r[i] = self.emit[i].x() + rad_r;
+            self.back_buf.0.g[i] = self.emit[i].y() + rad_g;
+            self.back_buf.0.b[i] = self.emit[i].z() + rad_b;
         }
-    });
-    (front_buf_ret, rand_to_render_recv)
+    }
 }
