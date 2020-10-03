@@ -109,8 +109,8 @@ fn setup(
     commands
         .spawn(Camera3dComponents {
             transform: Transform::new(Mat4::face_toward(
-                Vec3::new(5.0, 5.0, 20.0),
-                Vec3::new(5.0, 5.0, 0.0),
+                Vec3::new(10.0, 5.0, 40.0),
+                Vec3::new(10.0, 5.0, 0.0),
                 Vec3::new(0.0, 1.0, 0.0),
             )),
             ..Default::default()
