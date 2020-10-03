@@ -26,6 +26,7 @@ pub mod util;
 pub mod map;
 pub mod math;
 pub mod rad;
+pub mod rad_simd;
 // mod scene;
 
 // pub use buffer::{aligned_vector_init, MutRadSlice, RadBuffer, RadSlice};

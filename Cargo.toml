@@ -18,4 +18,4 @@ rand = {version = "^0.7", features = ["small_rng"]}
 rayon="^1"
 rodio = "*"
 serde = { version = "1", features = ["derive"] }
-simdeez = "^1"
+packed_simd = { version = "^0.3", target_features = ["avx2", "sse2"]}
