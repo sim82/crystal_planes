@@ -10,8 +10,8 @@ use bevy::{
 };
 
 mod crystal;
+mod hud;
 mod quad_render;
-
 use crystal::rad;
 
 /// This example illustrates how to create a custom material asset and a shader that uses that material
@@ -29,7 +29,9 @@ fn main() {
         //.add_system(light_move_system.system())
         .add_system(light_update_system.system())
         .init_resource::<LightUpdateState>()
+        .add_plugin(hud::HudPlugin)
         .add_system(rotator_system.system())
+        .init_resource::<RotatorSystemState>()
         // .add_system(swap_buffers.system())
         .run();
 }
@@ -64,8 +66,20 @@ fn setup(mut commands: Commands) {
 /// this component indicates what entities should rotate
 struct Rotator;
 
+#[derive(Default)]
+struct RotatorSystemState {
+    run: bool,
+}
+
 /// rotates the parent, which will result in the child also rotating
-fn rotator_system(time: Res<Time>, mut query: Query<(&Rotator, &mut Transform)>) {
+fn rotator_system(
+    time: Res<Time>,
+    state: Res<RotatorSystemState>,
+    mut query: Query<(&Rotator, &mut Transform)>,
+) {
+    if !state.run {
+        return;
+    }
     for (_rotator, mut transform) in &mut query.iter() {
         transform.rotate(Quat::from_rotation_y(0.5 * time.delta_seconds));
     }
@@ -181,7 +195,8 @@ fn _light_move_system(
 
 #[derive(Default)]
 struct LightUpdateState {
-    pause: bool,
+    // pause: bool,
+    last_pos: Option<Vec3>,
 }
 
 fn light_update_system(
@@ -190,19 +205,22 @@ fn light_update_system(
     rad_light: &RadPointLight,
     transform: &GlobalTransform,
 ) {
-    // state.pause = true;
+    // if state.pause {
+    //     return;
+    // }
 
-    if state.pause {
+    // state.pause = true;
+    let pos = transform.translation() * 4.0;
+    if Some(pos) == state.last_pos {
         return;
     }
+
+    state.last_pos = Some(pos);
+    // println!("send: {:?}", pos);
 
     rad_update_channel
         .lock()
         .unwrap()
-        .send(rad::RenderToRad::PointLight(
-            0,
-            transform.translation() * 4.0,
-            rad_light.color,
-        ))
+        .send(rad::RenderToRad::PointLight(0, pos, rad_light.color))
         .unwrap();
 }

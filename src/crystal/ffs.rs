@@ -117,7 +117,7 @@ pub fn generate_formfactors(
                     && !util::occluded(plane1.cell + norm1, plane2.cell + norm2, &**bitmap)
                 {
                     tmp.push((i as u32, j as u32, ff));
-                    tmp.push((j as u32, j as u32, ff));
+                    tmp.push((j as u32, i as u32, ff));
                 }
             }
             send.send(tmp).unwrap();

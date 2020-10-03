@@ -80,6 +80,8 @@ pub enum RadToRender {
         num_int: usize,
         duration: std::time::Duration,
     },
+    StatusUpdate(String),
+    RadReady,
 }
 
 pub fn apply_pointlight(
@@ -186,9 +188,16 @@ impl RadThread for RadData {
     fn spawn(mut self) -> Receiver<RadToRender> {
         let (rad_to_render_channel, rand_to_render_recv) = std::sync::mpsc::channel();
         // let mut last_emit_change = std::time::Instant::now();
+
         std::thread::spawn(move || {
+            rad_to_render_channel
+                .send(RadToRender::StatusUpdate("try load exents".into()))
+                .unwrap();
             match ffs::Extents::load("extents.bin") {
-                Some(extents) => self.extents = Some(extents),
+                Some(extents) => {
+                    rad_to_render_channel.send(RadToRender::RadReady).unwrap();
+                    self.extents = Some(extents);
+                }
                 None => {
                     // let formfactors = ffs::setup_formfactors(
                     //     &self.plane_scene.planes,
@@ -226,6 +235,12 @@ impl RadThread for RadData {
                                 let formfactors =
                                     self.formfactors.get_or_insert_with(|| Vec::new());
                                 formfactors.append(&mut ff);
+                                rad_to_render_channel
+                                    .send(RadToRender::StatusUpdate(format!(
+                                        "collecting fromfactors: {}",
+                                        formfactors.len()
+                                    )))
+                                    .unwrap();
                                 // println!("append: {}", formfactors.len());
                             }
                             Err(std::sync::mpsc::TryRecvError::Empty) => {
@@ -237,11 +252,26 @@ impl RadThread for RadData {
                                     self.formfactors.get_or_insert_with(|| Vec::new());
                                 println!("done ffs: {}", formfactors.len());
 
+                                rad_to_render_channel
+                                    .send(RadToRender::StatusUpdate("sort formfactors".into()))
+                                    .unwrap();
                                 let formfactors = ffs::sort_formfactors(formfactors.clone());
+
+                                rad_to_render_channel
+                                    .send(RadToRender::StatusUpdate("split formfactors".into()))
+                                    .unwrap();
                                 let formfactors = ffs::split_formfactors(&formfactors);
+                                rad_to_render_channel
+                                    .send(RadToRender::StatusUpdate("generate extents".into()))
+                                    .unwrap();
                                 let extents = ffs::Extents(ffs::to_extents(&formfactors));
+                                rad_to_render_channel
+                                    .send(RadToRender::StatusUpdate("write extents".into()))
+                                    .unwrap();
                                 extents.write("extents.bin");
                                 self.extents = Some(extents);
+
+                                rad_to_render_channel.send(RadToRender::RadReady).unwrap();
                                 drop_ff_recv = true;
                                 break;
                             }
@@ -293,7 +323,7 @@ impl RadThread for RadData {
 }
 impl RadData {
     fn rad_iter_raw_formfactors(&mut self) {
-        println!("iter raw");
+        // println!("iter raw");
         let r = &mut self.back_buf.0.r;
         let g = &mut self.back_buf.0.g;
         let b = &mut self.back_buf.0.b;
@@ -306,7 +336,7 @@ impl RadData {
         let formfactors = self.formfactors.as_ref().unwrap();
 
         let front = self.front_buf.read();
-        println!("len: {} {}", r.len(), front.r.len());
+        // println!("len: {} {}", r.len(), front.r.len());
         for (i, j, ff) in formfactors {
             let i = *i as usize;
             let j = *j as usize;
@@ -323,7 +353,7 @@ impl RadData {
     }
 
     fn rad_iter_extents(&mut self) {
-        println!("iter extents");
+        // println!("iter extents");
         let extents = self.extents.as_ref().unwrap();
         // run one iteration of radiosity integration (aka. 'heavy lifting').
         // holding only a read lock to front_buf, so gfx code can concurrently access it without blocking.
@@ -353,4 +383,10 @@ impl RadData {
             self.back_buf.0.b[i] = self.emit[i].z() + rad_b;
         }
     }
+
+    // fn send_status_update<T: Into<String>>(&mut self, text: T) {
+    //     self.rad_to_render_channel
+    //         .send(RadToRender::StatusUpdate(text)
+    //         .unwrap();
+    // }
 }

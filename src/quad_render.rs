@@ -291,15 +291,26 @@ fn apply_frontbuf(
     mut meshes: ResMut<Assets<Mesh>>,
     rad_to_render: Res<Mutex<Receiver<rad::RadToRender>>>,
     mut diagnostics: ResMut<Diagnostics>,
+    mut render_status: ResMut<super::hud::RenderStatus>,
+    mut rotator_system_state: ResMut<super::RotatorSystemState>,
     mut query: Query<(&rad::Plane, &Plane)>,
 ) {
     let mut update = false;
+
+    // FIXME: move general RadToRender message processing somewhere else
     for cmd in rad_to_render.lock().unwrap().try_iter() {
         match cmd {
             rad::RadToRender::IterationDone { num_int, duration } => {
                 diagnostics
                     .add_measurement(RAD_INT_PER_SECOND, num_int as f64 / duration.as_secs_f64());
                 update = true;
+            }
+            rad::RadToRender::StatusUpdate(text) => {
+                render_status.text = text;
+            }
+            rad::RadToRender::RadReady => {
+                render_status.text = "ready".into();
+                rotator_system_state.run = true;
             }
         }
     }
