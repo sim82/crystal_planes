@@ -19,7 +19,7 @@ fn main() {
     App::build()
         .add_default_plugins()
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        .add_plugin(PrintDiagnosticsPlugin::default())
+        // .add_plugin(PrintDiagnosticsPlugin::default())
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
         .add_startup_stage("planes")
         .add_startup_system_to_stage("planes", setup.system())
@@ -28,6 +28,7 @@ fn main() {
         .add_plugin(quad_render::QuadRenderPlugin::default())
         //.add_system(light_move_system.system())
         .add_system(light_update_system.system())
+        .init_resource::<LightUpdateState>()
         .add_system(rotator_system.system())
         // .add_system(swap_buffers.system())
         .run();
@@ -178,11 +179,23 @@ fn _light_move_system(
     }
 }
 
+#[derive(Default)]
+struct LightUpdateState {
+    pause: bool,
+}
+
 fn light_update_system(
+    mut state: ResMut<LightUpdateState>,
     rad_update_channel: Res<Mutex<Sender<rad::RenderToRad>>>,
     rad_light: &RadPointLight,
     transform: &GlobalTransform,
 ) {
+    // state.pause = true;
+
+    if state.pause {
+        return;
+    }
+
     rad_update_channel
         .lock()
         .unwrap()

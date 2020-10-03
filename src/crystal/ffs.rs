@@ -74,13 +74,14 @@ pub fn setup_formfactors(planes: &PlanesSep, bitmap: &dyn Bitmap) -> Vec<(u32, u
 pub fn generate_formfactors(
     planes: &PlanesSep,
     bitmap: std::sync::Arc<Box<dyn Bitmap + Send + Sync>>,
-) -> std::sync::mpsc::Receiver<(u32, u32, f32)> {
+) -> std::sync::mpsc::Receiver<Vec<(u32, u32, f32)>> {
     let (send, recv) = std::sync::mpsc::channel();
 
     let planes = planes.planes_iter().cloned().collect::<Vec<Plane>>();
     std::thread::spawn(move || {
         println!("num planes: {}", planes.len());
         for (i, plane1) in planes.iter().enumerate() {
+            let mut tmp = Vec::new();
             let norm1 = plane1.dir.get_normal_i();
             let norm1f = Vec3::new(norm1.x() as f32, norm1.y() as f32, norm1.z() as f32);
             let p1f = Vec3::new(
@@ -115,10 +116,11 @@ pub fn generate_formfactors(
                 if !dist_cull
                     && !util::occluded(plane1.cell + norm1, plane2.cell + norm2, &**bitmap)
                 {
-                    send.send((i as u32, j as u32, ff)).unwrap();
-                    send.send((j as u32, j as u32, ff)).unwrap();
+                    tmp.push((i as u32, j as u32, ff));
+                    tmp.push((j as u32, j as u32, ff));
                 }
             }
+            send.send(tmp).unwrap();
         }
         println!("generated formfactors");
     });

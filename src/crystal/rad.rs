@@ -133,7 +133,7 @@ struct RadData {
     diffuse: Vec<Vec3>,
     extents: Option<ffs::Extents>,
     formfactors: Option<Vec<(u32, u32, f32)>>,
-    ff_recv: Option<Mutex<Receiver<(u32, u32, f32)>>>,
+    ff_recv: Option<Mutex<Receiver<Vec<(u32, u32, f32)>>>>,
     int_sum: usize,
 }
 
@@ -214,35 +214,42 @@ impl RadThread for RadData {
             //     .sum::<usize>();
             let int_per_iter = 0;
             loop {
+                let mut drop_ff_recv = false;
                 if let Some(recv) = self.ff_recv.as_ref() {
                     let recv = recv.lock().unwrap();
 
                     let now = std::time::Instant::now();
                     while now.elapsed() < std::time::Duration::from_millis(10) {
                         match recv.try_recv() {
-                            Ok(ff) => {
+                            Ok(mut ff) => {
                                 // println!("ff: {:?}", ff);
                                 let formfactors =
                                     self.formfactors.get_or_insert_with(|| Vec::new());
-                                formfactors.push(ff)
+                                formfactors.append(&mut ff);
+                                // println!("append: {}", formfactors.len());
                             }
                             Err(std::sync::mpsc::TryRecvError::Empty) => {
                                 // println!("empty");
                                 break;
                             }
                             Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                                // println!("done");
                                 let formfactors =
                                     self.formfactors.get_or_insert_with(|| Vec::new());
+                                println!("done ffs: {}", formfactors.len());
+
                                 let formfactors = ffs::sort_formfactors(formfactors.clone());
                                 let formfactors = ffs::split_formfactors(&formfactors);
                                 let extents = ffs::Extents(ffs::to_extents(&formfactors));
                                 extents.write("extents.bin");
                                 self.extents = Some(extents);
+                                drop_ff_recv = true;
                                 break;
                             }
                         }
                     }
+                }
+                if drop_ff_recv {
+                    self.ff_recv = None;
                 }
 
                 // only use last update of light 0 for now
@@ -286,6 +293,7 @@ impl RadThread for RadData {
 }
 impl RadData {
     fn rad_iter_raw_formfactors(&mut self) {
+        println!("iter raw");
         let r = &mut self.back_buf.0.r;
         let g = &mut self.back_buf.0.g;
         let b = &mut self.back_buf.0.b;
@@ -315,6 +323,7 @@ impl RadData {
     }
 
     fn rad_iter_extents(&mut self) {
+        println!("iter extents");
         let extents = self.extents.as_ref().unwrap();
         // run one iteration of radiosity integration (aka. 'heavy lifting').
         // holding only a read lock to front_buf, so gfx code can concurrently access it without blocking.
