@@ -417,31 +417,45 @@ impl RadData {
         // holding only a read lock to front_buf, so gfx code can concurrently access it without blocking.
         let front = self.front_buf.read();
 
-        let rad_out: Vec<(f32, f32, f32)> = (0..self.num_planes)
-            .into_par_iter()
-            .map(|i| {
-                extents_simd[i].collect(
+        // let rad_out: Vec<(f32, f32, f32)> = (0..self.num_planes)
+        //     .into_par_iter()
+        //     .map(|i| {
+        //         extents_simd[i].collect(
+        //             i,
+        //             (&front.r[..], &front.g[..], &front.b[..]),
+        //             self.emit[i],
+        //             self.diffuse[i],
+        //         )
+        //     })
+        //     .collect();
+
+        // for (i, (rad_r, rad_g, rad_b)) in rad_out.iter().enumerate() {
+        //     self.back_buf.0.r[i] = *rad_r;
+        //     self.back_buf.0.g[i] = *rad_g;
+        //     self.back_buf.0.b[i] = *rad_b;
+        // }
+
+        let r = &mut self.back_buf.0.r;
+        let g = &mut self.back_buf.0.g;
+        let b = &mut self.back_buf.0.b;
+        let emit = &self.emit;
+        let diffuse = &self.diffuse;
+
+        r.par_iter_mut()
+            .zip(g.par_iter_mut())
+            .zip(b.par_iter_mut())
+            .enumerate()
+            .for_each(|(i, ((r, g), b))| {
+                let rad = extents_simd[i].collect(
                     i,
                     (&front.r[..], &front.g[..], &front.b[..]),
-                    self.emit[i],
-                    self.diffuse[i],
-                )
-                // for extent in &extents_simd[i] {
-                //     for (j, ff) in extent.ffs.iter().enumerate() {
-                //         rad_r += front.r[j + extent.start as usize] * diffuse.x() * *ff;
-                //         rad_g += front.g[j + extent.start as usize] * diffuse.y() * *ff;
-                //         rad_b += front.b[j + extent.start as usize] * diffuse.z() * *ff;
-                //     }
-                // }
-                // (rad_r, rad_g, rad_b)
-            })
-            .collect();
-
-        for (i, (rad_r, rad_g, rad_b)) in rad_out.iter().enumerate() {
-            self.back_buf.0.r[i] = *rad_r;
-            self.back_buf.0.g[i] = *rad_g;
-            self.back_buf.0.b[i] = *rad_b;
-        }
+                    emit[i],
+                    diffuse[i],
+                );
+                *r = rad.0;
+                *g = rad.1;
+                *b = rad.2;
+            });
     }
 
     // fn send_status_update<T: Into<String>>(&mut self, text: T) {
