@@ -19,7 +19,7 @@ fn main() {
     App::build()
         .add_default_plugins()
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        // .add_plugin(PrintDiagnosticsPlugin::default())
+        .add_plugin(PrintDiagnosticsPlugin::default())
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
         .add_startup_stage("planes")
         .add_startup_system_to_stage("planes", setup.system())

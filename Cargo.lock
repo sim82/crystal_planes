@@ -1098,7 +1098,7 @@ dependencies = [
  "bincode",
  "image",
  "ndarray",
- "packed_simd",
+ "packed_simd_2",
  "rand",
  "rayon",
  "rodio",
@@ -2344,12 +2344,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "packed_simd"
-version = "0.3.3"
+name = "packed_simd_2"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a85ea9fc0d4ac0deb6fe7911d38786b32fc11119afd9e9d38b84ff691ce64220"
+checksum = "3278e0492f961fd4ae70909f56b2723a7e8d01a228427294e19cdfdebda89a17"
 dependencies = [
  "cfg-if",
+ "libm",
 ]
 
 [[package]]

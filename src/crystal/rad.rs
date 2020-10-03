@@ -3,6 +3,7 @@ use std::sync::{mpsc::Receiver, Arc, Mutex, RwLock, RwLockReadGuard, RwLockWrite
 use super::{ffs, math::prelude::*, PlaneScene};
 use bevy::prelude::*;
 
+use super::rad_simd;
 use rayon::prelude::*;
 
 pub struct RadBuffer {
@@ -137,6 +138,7 @@ struct RadData {
     formfactors: Option<Vec<(u32, u32, f32)>>,
     ff_recv: Option<Mutex<Receiver<Vec<(u32, u32, f32)>>>>,
     int_sum: usize,
+    extents_simd: Option<Vec<rad_simd::ExtentsSimd>>,
 }
 
 impl RadData {
@@ -176,6 +178,7 @@ impl RadData {
             formfactors: None,
             ff_recv: None,
             int_sum: 0,
+            extents_simd: None,
         }
     }
 }
@@ -195,7 +198,6 @@ impl RadThread for RadData {
                 .unwrap();
             match ffs::Extents::load("extents.bin") {
                 Some(extents) => {
-                    rad_to_render_channel.send(RadToRender::RadReady).unwrap();
                     self.extents = Some(extents);
                 }
                 None => {
@@ -216,12 +218,7 @@ impl RadThread for RadData {
             };
             // let extents = self.extents.as_ref().unwrap();
 
-            // let int_per_iter = extents
-            //     .0
-            //     .iter()
-            //     .flat_map(|es| es.iter().map(|e| e.ffs.len()))
-            //     .sum::<usize>();
-            let int_per_iter = 0;
+            let mut int_per_iter = 0;
             loop {
                 let mut drop_ff_recv = false;
                 if let Some(recv) = self.ff_recv.as_ref() {
@@ -271,7 +268,6 @@ impl RadThread for RadData {
                                 extents.write("extents.bin");
                                 self.extents = Some(extents);
 
-                                rad_to_render_channel.send(RadToRender::RadReady).unwrap();
                                 drop_ff_recv = true;
                                 break;
                             }
@@ -280,6 +276,32 @@ impl RadThread for RadData {
                 }
                 if drop_ff_recv {
                     self.ff_recv = None;
+                }
+
+                if self.extents.is_some() && int_per_iter == 0 {
+                    int_per_iter = self
+                        .extents
+                        .as_ref()
+                        .unwrap()
+                        .0
+                        .iter()
+                        .flat_map(|es| es.iter().map(|e| e.ffs.len()))
+                        .sum::<usize>();
+                }
+
+                if self.extents.is_some() && self.extents_simd.is_none() {
+                    rad_to_render_channel
+                        .send(RadToRender::StatusUpdate("generate simd extents".into()))
+                        .unwrap();
+
+                    let extens = self.extents.as_ref().unwrap();
+                    let mut extents_simd = Vec::new();
+                    for ext in &extens.0 {
+                        let ext_simd = rad_simd::ExtentsSimd::from_extents(&ext);
+                        extents_simd.push(ext_simd);
+                    }
+                    self.extents_simd = Some(extents_simd);
+                    rad_to_render_channel.send(RadToRender::RadReady).unwrap();
                 }
 
                 // only use last update of light 0 for now
@@ -298,11 +320,14 @@ impl RadThread for RadData {
                 }
 
                 let rad_start = std::time::Instant::now();
-                if self.extents.is_some() {
+                if self.extents_simd.is_some() {
+                    self.rad_iter_extents_simd();
+                    self.int_sum += int_per_iter;
+                } else if self.extents.is_some() {
                     self.rad_iter_extents();
                     self.int_sum += int_per_iter;
                 } else if self.formfactors.is_some() {
-                    self.rad_iter_raw_formfactors();
+                    self.int_sum += self.rad_iter_raw_formfactors();
                 }
 
                 {
@@ -312,17 +337,18 @@ impl RadThread for RadData {
                 }
                 rad_to_render_channel
                     .send(RadToRender::IterationDone {
-                        num_int: int_per_iter,
+                        num_int: self.int_sum,
                         duration: rad_start.elapsed(),
                     })
                     .unwrap();
+                self.int_sum = 0;
             }
         });
         rand_to_render_recv
     }
 }
 impl RadData {
-    fn rad_iter_raw_formfactors(&mut self) {
+    fn rad_iter_raw_formfactors(&mut self) -> usize {
         // println!("iter raw");
         let r = &mut self.back_buf.0.r;
         let g = &mut self.back_buf.0.g;
@@ -350,6 +376,7 @@ impl RadData {
             self.back_buf.0.g[i] += self.emit[i].y();
             self.back_buf.0.b[i] += self.emit[i].z();
         }
+        formfactors.len()
     }
 
     fn rad_iter_extents(&mut self) {
@@ -381,6 +408,39 @@ impl RadData {
             self.back_buf.0.r[i] = self.emit[i].x() + rad_r;
             self.back_buf.0.g[i] = self.emit[i].y() + rad_g;
             self.back_buf.0.b[i] = self.emit[i].z() + rad_b;
+        }
+    }
+
+    fn rad_iter_extents_simd(&mut self) {
+        let extents_simd = self.extents_simd.as_ref().unwrap();
+        // run one iteration of radiosity integration (aka. 'heavy lifting').
+        // holding only a read lock to front_buf, so gfx code can concurrently access it without blocking.
+        let front = self.front_buf.read();
+
+        let rad_out: Vec<(f32, f32, f32)> = (0..self.num_planes)
+            .into_par_iter()
+            .map(|i| {
+                extents_simd[i].collect(
+                    i,
+                    (&front.r[..], &front.g[..], &front.b[..]),
+                    self.emit[i],
+                    self.diffuse[i],
+                )
+                // for extent in &extents_simd[i] {
+                //     for (j, ff) in extent.ffs.iter().enumerate() {
+                //         rad_r += front.r[j + extent.start as usize] * diffuse.x() * *ff;
+                //         rad_g += front.g[j + extent.start as usize] * diffuse.y() * *ff;
+                //         rad_b += front.b[j + extent.start as usize] * diffuse.z() * *ff;
+                //     }
+                // }
+                // (rad_r, rad_g, rad_b)
+            })
+            .collect();
+
+        for (i, (rad_r, rad_g, rad_b)) in rad_out.iter().enumerate() {
+            self.back_buf.0.r[i] = *rad_r;
+            self.back_buf.0.g[i] = *rad_g;
+            self.back_buf.0.b[i] = *rad_b;
         }
     }
 
