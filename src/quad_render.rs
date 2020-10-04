@@ -291,7 +291,7 @@ fn apply_frontbuf(
     mut meshes: ResMut<Assets<Mesh>>,
     rad_to_render: Res<Mutex<Receiver<rad::RadToRender>>>,
     mut diagnostics: ResMut<Diagnostics>,
-    mut render_status: ResMut<super::hud::RenderStatus>,
+    mut render_status: ResMut<crate::hud::RenderStatus>,
     mut rotator_system_state: ResMut<super::RotatorSystemState>,
     mut query: Query<(&rad::Plane, &Plane)>,
 ) {

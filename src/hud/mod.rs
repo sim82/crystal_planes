@@ -3,6 +3,7 @@ use bevy::{
     prelude::*,
 };
 
+mod button;
 /// This example illustrates how to create text and update it in a system. It displays the current FPS in the upper left hand corner.
 pub struct RenderStatus {
     pub text: String,
@@ -70,6 +71,7 @@ fn setup_hud_system(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    button_materials: Res<button::ButtonMaterials>,
 ) {
     let font_handle = asset_server
         .load("assets/fonts/FiraMono-Medium.ttf")
@@ -155,7 +157,21 @@ fn setup_hud_system(
                     },
                     ..Default::default()
                 })
-                .with(HudSrc::RenderStatus);
+                .with(HudSrc::RenderStatus)
+                .spawn(ButtonComponents {
+                    style: Style {
+                        size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+                        // center button
+                        margin: Rect::all(Val::Auto),
+                        // horizontally center child text
+                        justify_content: JustifyContent::Center,
+                        // vertically center child text
+                        align_items: AlignItems::Center,
+                        ..Default::default()
+                    },
+                    material: button_materials.normal,
+                    ..Default::default()
+                });
         });
 }
 
@@ -164,8 +180,9 @@ pub struct HudPlugin;
 
 impl Plugin for HudPlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app.add_startup_system(setup_hud_system.system())
+        app.init_resource::<RenderStatus>()
+            .add_startup_system(setup_hud_system.system())
             .add_system(update_hud_system.system())
-            .init_resource::<RenderStatus>();
+            .add_plugin(button::ButtonPlugin);
     }
 }
