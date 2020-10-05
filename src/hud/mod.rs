@@ -66,11 +66,12 @@ fn update_hud_system(
         // }
     }
 }
+struct RotateButtonText;
 
 fn setup_hud_system(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut _materials: ResMut<Assets<ColorMaterial>>,
     button_materials: Res<button::ButtonMaterials>,
 ) {
     let font_handle = asset_server
@@ -162,15 +163,31 @@ fn setup_hud_system(
                     style: Style {
                         size: Size::new(Val::Px(150.0), Val::Px(65.0)),
                         // center button
-                        margin: Rect::all(Val::Auto),
+                        // margin: Rect::all(Val::Auto),
                         // horizontally center child text
                         justify_content: JustifyContent::Center,
                         // vertically center child text
                         align_items: AlignItems::Center,
+                        align_self: AlignSelf::FlexStart,
                         ..Default::default()
                     },
                     material: button_materials.normal,
                     ..Default::default()
+                })
+                .with_children(|parent| {
+                    parent
+                        .spawn(TextComponents {
+                            text: Text {
+                                value: "Start".to_string(),
+                                font: asset_server.load("assets/fonts/FiraSans-Bold.ttf").unwrap(),
+                                style: TextStyle {
+                                    font_size: 40.0,
+                                    color: Color::rgb(0.8, 0.8, 0.8),
+                                },
+                            },
+                            ..Default::default()
+                        })
+                        .with(RotateButtonText);
                 });
         });
 }

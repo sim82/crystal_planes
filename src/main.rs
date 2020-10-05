@@ -27,7 +27,7 @@ fn main() {
         .add_startup_stage_after("planes", "renderer")
         .add_plugin(quad_render::QuadRenderPlugin::default())
         //.add_system(light_move_system.system())
-        .add_system(light_update_system.system())
+        .add_system_to_stage(stage::POST_UPDATE, light_update_system.system())
         .init_resource::<LightUpdateState>()
         .add_plugin(hud::HudPlugin)
         .add_system(rotator_system.system())
@@ -204,19 +204,18 @@ fn light_update_system(
     rad_update_channel: Res<Mutex<Sender<rad::RenderToRad>>>,
     rad_light: &RadPointLight,
     transform: &GlobalTransform,
+    // Mutated<GlobalTransform>)>,
+    // _: Mutated<Position>,
 ) {
-    // if state.pause {
-    //     return;
-    // }
-
-    // state.pause = true;
     let pos = transform.translation() * 4.0;
+
+    // FIXME: shouldn't Mutated<GlobalTransform>)> do this?
     if Some(pos) == state.last_pos {
         return;
     }
+    // println!("send: {:?}", pos);
 
     state.last_pos = Some(pos);
-    // println!("send: {:?}", pos);
 
     rad_update_channel
         .lock()

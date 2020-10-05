@@ -14,8 +14,6 @@ pub struct ExtentsSimd {
 // struct RadSlice<'a>(&'a [f32], &'a [f32], &'a [f32]);
 type RadSlice<'a> = (&'a [f32], &'a [f32], &'a [f32]);
 
-type MutRadSlice<'a> = (&'a mut [f32], &'a mut [f32], &'a mut [f32]);
-
 impl ExtentsSimd {
     pub fn from_extents(extents: &Vec<ffs::Extent>) -> ExtentsSimd {
         let mut vec16 = Vec::new();
@@ -58,7 +56,7 @@ impl ExtentsSimd {
 
     pub fn collect(
         &self,
-        i: usize,
+        _i: usize,
         src: RadSlice,
         // dest: MutRadSlice,
         emit: Vec3,

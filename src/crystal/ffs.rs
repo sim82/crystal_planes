@@ -25,7 +25,7 @@ fn normal_cull(pl1: &Plane, pl2: &Plane) -> bool {
         || (d1 == Dir::ZxPos && d2 == Dir::ZxNeg && p1.y() > p2.y())
 }
 
-pub fn setup_formfactors(planes: &PlanesSep, bitmap: &dyn Bitmap) -> Vec<(u32, u32, f32)> {
+pub fn _setup_formfactors(planes: &PlanesSep, bitmap: &dyn Bitmap) -> Vec<(u32, u32, f32)> {
     let planes = planes.planes_iter().collect::<Vec<&Plane>>();
     println!("num planes: {}", planes.len());
     let mut ffs = Vec::new();
