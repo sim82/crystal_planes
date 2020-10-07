@@ -8,7 +8,7 @@ use bevy::{
     prelude::*,
     render::mesh::shape,
 };
-
+use rand::{thread_rng, Rng};
 mod crystal;
 mod hud;
 mod quad_render;
@@ -19,7 +19,7 @@ fn main() {
     App::build()
         .add_default_plugins()
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        .add_plugin(PrintDiagnosticsPlugin::default())
+        // .add_plugin(PrintDiagnosticsPlugin::default())
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
         .add_startup_stage("planes")
         .add_startup_system_to_stage("planes", setup.system())
@@ -29,6 +29,8 @@ fn main() {
         //.add_system(light_move_system.system())
         .add_system_to_stage(stage::POST_UPDATE, light_update_system.system())
         .init_resource::<LightUpdateState>()
+        .add_system(demo_system.system())
+        .init_resource::<DemoSystemState>()
         .add_plugin(hud::HudPlugin)
         .add_system(rotator_system.system())
         .init_resource::<RotatorSystemState>()
@@ -222,4 +224,40 @@ fn light_update_system(
         .unwrap()
         .send(rad::RenderToRad::PointLight(0, pos, rad_light.color))
         .unwrap();
+}
+
+struct DemoSystemState {
+    cycle: bool,
+    cycle_timer: Timer,
+}
+
+impl Default for DemoSystemState {
+    fn default() -> Self {
+        DemoSystemState {
+            cycle: false,
+            cycle_timer: Timer::from_seconds(1f32, true),
+        }
+    }
+}
+
+fn rand_color(min: f32, max: f32) -> Vec3 {
+    rad::hsv_to_rgb(thread_rng().gen_range(min, max), 1f32, 1f32)
+}
+
+fn demo_system(
+    mut state: ResMut<DemoSystemState>,
+    time: Res<Time>,
+    rad_update_channel: Res<Mutex<Sender<rad::RenderToRad>>>,
+) {
+    state.cycle_timer.tick(time.delta_seconds);
+    if state.cycle && state.cycle_timer.just_finished {
+        rad_update_channel
+            .lock()
+            .unwrap()
+            .send(rad::RenderToRad::SetStripeColors(
+                rand_color(0f32, 180f32),
+                rand_color(180f32, 360f32),
+            ))
+            .unwrap();
+    }
 }

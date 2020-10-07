@@ -74,6 +74,7 @@ pub fn hsv_to_rgb(h: f32, s: f32, v: f32) -> Vec3 {
 
 pub enum RenderToRad {
     PointLight(usize, Vec3, Vec3),
+    SetStripeColors(Vec3, Vec3),
 }
 
 pub enum RadToRender {
@@ -305,18 +306,35 @@ impl RadThread for RadData {
                 }
 
                 // only use last update of light 0 for now
-                match self.render_to_rad_channel.lock().unwrap().try_iter().last() {
-                    Some(RenderToRad::PointLight(id, pos, color)) if id == 0 => {
-                        // println!("update: {} {:?}", id, pos);
-                        apply_pointlight(
-                            &mut self.emit,
-                            &self.diffuse,
-                            &self.plane_scene,
-                            pos,
-                            color,
-                        );
+                let mut last_light_update = None;
+                for cmd in self.render_to_rad_channel.lock().unwrap().try_iter() {
+                    match cmd {
+                        RenderToRad::PointLight(id, pos, color) if id == 0 => {
+                            // ignore all but last light update
+                            last_light_update = Some((pos, color))
+                        }
+                        RenderToRad::SetStripeColors(color1, color2) => {
+                            for (i, plane) in self.plane_scene.planes.planes_iter().enumerate() {
+                                if ((plane.cell.y()) / 2) % 2 == 1 {
+                                    continue;
+                                }
+                                self.diffuse[i] = match plane.dir {
+                                    super::Dir::XyPos => color1,
+                                    super::Dir::XyNeg => color2,
+                                    super::Dir::YzPos | super::Dir::YzNeg => {
+                                        Vec3::new(0.8f32, 0.8f32, 0.8f32)
+                                    }
+                                    _ => Vec3::new(1f32, 1f32, 1f32),
+                                    // let color = hsv_to_rgb(rng.gen_range(0.0, 360.0), 1.0, 1.0); //random::<f32>(), 1.0, 1.0);
+                                    // scene.diffuse[i] = Vector3::new(color.0, color.1, color.2);
+                                }
+                            }
+                        }
+                        _ => (),
                     }
-                    _ => (),
+                }
+                if let Some((pos, color)) = last_light_update {
+                    apply_pointlight(&mut self.emit, &self.diffuse, &self.plane_scene, pos, color);
                 }
 
                 let rad_start = std::time::Instant::now();

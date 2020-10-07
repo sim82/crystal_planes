@@ -162,11 +162,7 @@ fn setup_hud_system(
                 .spawn(ButtonComponents {
                     style: Style {
                         size: Size::new(Val::Px(150.0), Val::Px(65.0)),
-                        // center button
-                        // margin: Rect::all(Val::Auto),
-                        // horizontally center child text
                         justify_content: JustifyContent::Center,
-                        // vertically center child text
                         align_items: AlignItems::Center,
                         align_self: AlignSelf::FlexStart,
                         ..Default::default()
@@ -174,6 +170,20 @@ fn setup_hud_system(
                     material: button_materials.normal,
                     ..Default::default()
                 })
+                .with(button::ToggleButton::new(
+                    |res| {
+                        let mut rot = res.get_mut::<super::RotatorSystemState>().unwrap();
+                        rot.run = !rot.run;
+                    },
+                    |res| {
+                        let rot = res.get::<super::RotatorSystemState>().unwrap();
+                        if rot.run {
+                            "Stop".into()
+                        } else {
+                            "Start".into()
+                        }
+                    },
+                ))
                 .with_children(|parent| {
                     parent
                         .spawn(TextComponents {
@@ -192,11 +202,7 @@ fn setup_hud_system(
                 .spawn(ButtonComponents {
                     style: Style {
                         size: Size::new(Val::Px(150.0), Val::Px(65.0)),
-                        // center button
-                        // margin: Rect::all(Val::Auto),
-                        // horizontally center child text
                         justify_content: JustifyContent::Center,
-                        // vertically center child text
                         align_items: AlignItems::Center,
                         align_self: AlignSelf::FlexStart,
                         ..Default::default()
@@ -205,8 +211,18 @@ fn setup_hud_system(
                     ..Default::default()
                 })
                 .with(button::ToggleButton::new(
-                    || println!("toggle!"),
-                    || "meeeeep".into(),
+                    |res| {
+                        let mut demo = res.get_mut::<super::DemoSystemState>().unwrap();
+                        demo.cycle = !demo.cycle;
+                    },
+                    |res| {
+                        let demo = res.get::<super::DemoSystemState>().unwrap();
+                        if demo.cycle {
+                            "cycle off".into()
+                        } else {
+                            "cycle on".into()
+                        }
+                    },
                 ))
                 .with_children(|parent| {
                     parent
