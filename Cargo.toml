@@ -18,3 +18,4 @@ rayon="^1"
 rodio = "*"
 serde = { version = "1", features = ["derive"] }
 packed_simd_2 = { version = "^0.3" }
+md5 = "^0.7"

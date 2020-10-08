@@ -1,8 +1,9 @@
 use crate::crystal::math::prelude::*;
 use bevy::prelude::*;
+use serde::Serialize;
 use std::{
     fs::File,
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, BufWriter},
     iter::Iterator,
     path::Path,
     sync::Arc,
@@ -142,7 +143,7 @@ impl MapSlice {
     }
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Serialize)]
 pub enum Dir {
     ZxPos,
     ZxNeg,
@@ -234,7 +235,7 @@ impl Cell for Point3i {
         ]
     }
 }
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct Plane {
     pub vertices: [i32; NUM_PLANE_CORNERS],
     pub dir: Dir,
@@ -458,5 +459,14 @@ impl PlaneScene {
             planes: Arc::new(planes),
             blockmap: Arc::new(blockmap),
         }
+    }
+    pub fn get_digest(&self) -> String {
+        // let buf = ;
+        let mut writer = BufWriter::new(Vec::new());
+        bincode::serialize_into(&mut writer, &(&self.planes.planes, &self.planes.vertices))
+            .unwrap();
+        format!("{:x}", md5::compute(writer.get_ref()))
+
+        // return 0; // TODO: implement some useful / quick hash for the scene content
     }
 }

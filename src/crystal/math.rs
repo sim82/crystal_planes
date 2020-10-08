@@ -1,7 +1,8 @@
 use bevy::math::prelude::*;
 use core::ops::*;
+use serde::Serialize;
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug, Default, Serialize)]
 pub struct Vec3i(pub i32, pub i32, pub i32);
 pub type Point3i = Vec3i;
 

@@ -255,24 +255,39 @@ pub struct Extents(pub Vec<Vec<Extent>>);
 const EXTENT_VERSION: &str = "extents v1";
 
 impl Extents {
-    pub fn load(filename: &str) -> Option<Self> {
+    pub fn try_load(filename: &str, scene_tag: &str) -> Option<Self> {
         if let Ok(f) = std::fs::File::open(filename) {
             println!("read from {}", filename);
-            let (file_version, extents): (String, Extents) =
-                bincode::deserialize_from(BufReader::new(f)).unwrap();
+            let data: Result<(String, String, Extents), _> =
+                bincode::deserialize_from(BufReader::new(f));
 
-            if file_version == EXTENT_VERSION {
-                println!("done");
-                return Some(extents);
+            match data {
+                Ok((file_version, hash, extents)) => {
+                    if file_version != EXTENT_VERSION {
+                        println!("wrong version");
+                        return None;
+                    }
+                    if hash != scene_tag {
+                        println!("wrong scene tag");
+                        return None;
+                    }
+                    return Some(extents);
+                }
+                Err(err) => {
+                    println!("deserialization failed: {}", err);
+                }
             }
-            println!("wrong version");
         }
         return None;
     }
 
-    pub fn write(&self, filename: &str) {
+    pub fn write(&self, filename: &str, scene_tag: &str) {
         if let Ok(file) = std::fs::File::create(filename) {
-            bincode::serialize_into(BufWriter::new(file), &(&EXTENT_VERSION, self)).unwrap();
+            bincode::serialize_into(
+                BufWriter::new(file),
+                &(&EXTENT_VERSION, &String::from(scene_tag), self),
+            )
+            .unwrap();
         }
         println!("wrote {}", filename);
     }
