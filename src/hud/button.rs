@@ -53,7 +53,7 @@ fn toggle_button_system(world: &mut World, res: &mut Resources) {
         Mutated<Interaction>,
         &mut Handle<ColorMaterial>,
     )>();
-    for (mut toggle_button, children, interaction, mut material) in &mut query.iter() {
+    for (mut toggle_button, _children, interaction, mut material) in &mut query.iter() {
         match *interaction {
             Interaction::Clicked => {
                 {

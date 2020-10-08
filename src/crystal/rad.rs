@@ -90,14 +90,14 @@ pub fn apply_pointlight(
     emit: &mut Vec<Vec3>,
     diffuse: &Vec<Vec3>,
     plane_scene: &PlaneScene,
-    pos: Vec3,
-    color: Vec3,
+    pos: &Vec3,
+    color: &Vec3,
 ) {
     let light_pos_i = Vec3i::from_vec3(&pos);
     for (i, plane) in plane_scene.planes.planes_iter().enumerate() {
         let trace_pos = plane.cell + plane.dir.get_normal_i(); // s
 
-        let d = (pos - trace_pos.into_vec3()).normalize();
+        let d = (*pos - trace_pos.into_vec3()).normalize();
         let len = 1f32;
         // normalize: make directional light
         // let len = d.length();
@@ -140,6 +140,7 @@ struct RadData {
     ff_recv: Option<Mutex<Receiver<Vec<(u32, u32, f32)>>>>,
     int_sum: usize,
     extents_simd: Option<Vec<rad_simd::ExtentsSimd>>,
+    point_lights: std::collections::HashMap<usize, (Vec3, Vec3)>,
 }
 
 impl RadData {
@@ -180,6 +181,7 @@ impl RadData {
             ff_recv: None,
             int_sum: 0,
             extents_simd: None,
+            point_lights: std::collections::HashMap::new(),
         }
     }
 }
@@ -187,6 +189,10 @@ impl RadData {
 trait RadThread {
     fn spawn(self) -> Receiver<RadToRender>;
 }
+
+// trait RadGenerateExtents {
+
+// }
 
 impl RadThread for RadData {
     fn spawn(mut self) -> Receiver<RadToRender> {
@@ -306,12 +312,13 @@ impl RadThread for RadData {
                 }
 
                 // only use last update of light 0 for now
-                let mut last_light_update = None;
+                let mut light_updates = std::collections::HashSet::new();
                 for cmd in self.render_to_rad_channel.lock().unwrap().try_iter() {
                     match cmd {
-                        RenderToRad::PointLight(id, pos, color) if id == 0 => {
+                        RenderToRad::PointLight(id, pos, color) => {
                             // ignore all but last light update
-                            last_light_update = Some((pos, color))
+                            self.point_lights.insert(id, (pos, color));
+                            light_updates.insert(id);
                         }
                         RenderToRad::SetStripeColors(color1, color2) => {
                             for (i, plane) in self.plane_scene.planes.planes_iter().enumerate() {
@@ -329,12 +336,21 @@ impl RadThread for RadData {
                                     // scene.diffuse[i] = Vector3::new(color.0, color.1, color.2);
                                 }
                             }
+                            // diffuse color change needs update of emit (via point lights)
+                            light_updates.extend(self.point_lights.keys());
                         }
-                        _ => (),
                     }
                 }
-                if let Some((pos, color)) = last_light_update {
-                    apply_pointlight(&mut self.emit, &self.diffuse, &self.plane_scene, pos, color);
+                for id in light_updates.iter() {
+                    if let Some((pos, color)) = self.point_lights.get(id) {
+                        apply_pointlight(
+                            &mut self.emit,
+                            &self.diffuse,
+                            &self.plane_scene,
+                            pos,
+                            color,
+                        );
+                    }
                 }
 
                 let rad_start = std::time::Instant::now();

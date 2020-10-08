@@ -3,11 +3,10 @@ use std::sync::{
     Mutex,
 };
 
-use bevy::{
-    diagnostic::{FrameTimeDiagnosticsPlugin, PrintDiagnosticsPlugin},
-    prelude::*,
-    render::mesh::shape,
-};
+#[allow(unused_imports)]
+use bevy::diagnostic::PrintDiagnosticsPlugin;
+
+use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, render::mesh::shape};
 use rand::{thread_rng, Rng};
 mod crystal;
 mod hud;
