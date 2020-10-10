@@ -282,13 +282,19 @@ impl Extents {
     }
 
     pub fn write(&self, filename: &str, scene_tag: &str) {
-        if let Ok(file) = std::fs::File::create(filename) {
-            bincode::serialize_into(
-                BufWriter::new(file),
+        let tmpname = format!("{}.tmp", filename);
+        if let Ok(file) = std::fs::File::create(tmpname.clone()) {
+            let mut w = BufWriter::new(file);
+            match bincode::serialize_into(
+                &mut w,
                 &(&EXTENT_VERSION, &String::from(scene_tag), self),
-            )
-            .unwrap();
+            ) {
+                Ok(_) => match std::fs::rename(tmpname, filename) {
+                    Ok(_) => println!("wrote {}", filename),
+                    Err(err) => println!("error during file rename. giving up: {:?}", err),
+                },
+                Err(err) => println!("serialize error {:?}", *err), // maybe: delete tempfile?
+            }
         }
-        println!("wrote {}", filename);
     }
 }

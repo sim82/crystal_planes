@@ -1,5 +1,6 @@
 use std::sync::{
-    mpsc::Receiver, mpsc::Sender, Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard,
+    mpsc::Receiver, mpsc::SendError, mpsc::Sender, Arc, Mutex, RwLock, RwLockReadGuard,
+    RwLockWriteGuard,
 };
 
 use super::{ffs, math::prelude::*, PlaneScene};
@@ -382,12 +383,16 @@ impl RadThread for RadData {
                     let mut front = self.front_buf.write();
                     std::mem::swap(&mut *front, &mut self.back_buf.0);
                 }
-                self.rad_to_render_channel
-                    .send(RadToRender::IterationDone {
-                        num_int: self.int_sum,
-                        duration: rad_start.elapsed(),
-                    })
-                    .unwrap();
+                match self.rad_to_render_channel.send(RadToRender::IterationDone {
+                    num_int: self.int_sum,
+                    duration: rad_start.elapsed(),
+                }) {
+                    Err(SendError(_)) => {
+                        println!("channel disconnected. terminate rad thread");
+                        break;
+                    }
+                    Ok(_) => (),
+                };
                 self.int_sum = 0;
             }
         });

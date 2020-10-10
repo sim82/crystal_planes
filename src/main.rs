@@ -35,6 +35,8 @@ fn main() {
         .init_resource::<RotatorSystemState>()
         // .add_system(swap_buffers.system())
         .run();
+
+    println!("run returned");
 }
 
 fn setup(mut commands: Commands) {
