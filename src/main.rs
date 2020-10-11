@@ -6,12 +6,15 @@ use std::sync::{
 #[allow(unused_imports)]
 use bevy::diagnostic::PrintDiagnosticsPlugin;
 
-use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, render::mesh::shape};
+use bevy::{
+    diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, render::mesh::shape, winit::WinitConfig,
+};
 use rand::{thread_rng, Rng};
 mod crystal;
 mod hud;
 mod quad_render;
 use crystal::rad;
+mod octree;
 
 /// This example illustrates how to create a custom material asset and a shader that uses that material
 fn main() {
@@ -33,6 +36,9 @@ fn main() {
         .add_plugin(hud::HudPlugin)
         .add_system(rotator_system.system())
         .init_resource::<RotatorSystemState>()
+        .add_resource(WinitConfig {
+            return_from_run: true,
+        })
         // .add_system(swap_buffers.system())
         .run();
 

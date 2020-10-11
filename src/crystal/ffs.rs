@@ -120,7 +120,13 @@ pub fn generate_formfactors(
                     tmp.push((j as u32, i as u32, ff));
                 }
             }
-            send.send(tmp).unwrap();
+            match send.send(tmp) {
+                Ok(_) => (),
+                Err(std::sync::mpsc::SendError(_)) => {
+                    println!("channel disconnected. terminate ff thread.");
+                    return;
+                }
+            };
         }
         println!("generated formfactors");
     });
