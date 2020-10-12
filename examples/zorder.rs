@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crystal_planes::crystal;
 use crystal_planes::crystal::math::*;
 
@@ -28,18 +30,25 @@ fn main() {
     //     Vec3i::new(11, 11, 11),
     // ];
 
-    let mut zordered: Vec<_> = points.iter().map(|p| octree::zorder(p)).collect();
-    zordered.sort();
-    // for i in zordered {
+    // let mut zordered: Vec<_> = points.iter().map(|p| octree::zorder(p)).collect();
+    // zordered.sort();
+    // // for i in zordered {
     //     println!("{:24b}", i);
     // }
     // for p in points.iter() {
     //     println!("{:b}", zorder(p));
     // }
 
-    for p in points.iter() {
-        // println!("{:?}\t{:24b}", p, zorder(p));
-        println!("{:?}\t{:8o}", p, octree::zorder(p));
+    // for p in points.iter() {
+    //     // println!("{:?}\t{:24b}", p, zorder(p));
+    //     println!("{:?}\t{:8o}", p, octree::zorder(p));
+    // }
+    let start = Instant::now();
+    let mut octants = octree::Octants::default();
+    let root = octree::create_octants_bottom_up(&mut octants, &points);
+    println!("time: {:?}", start.elapsed());
+    for octant in octants.octants {
+        println!("{:?}", octant);
     }
 }
 
@@ -85,7 +94,7 @@ mod octree {
     // }
 
     pub struct Octants {
-        octants: Vec<Octant>,
+        pub octants: Vec<Octant>,
     }
 
     impl Default for Octants {
@@ -165,6 +174,8 @@ mod octree {
     pub fn generate_points(octants: &Octants, root: OctantId, offset: &Point3i) -> Vec<Point3i> {
         let octant = octants.get(root);
         let mut out = Vec::new();
+        // println!("{:?}", octant);
+
         for (i, child) in octant.children.iter().enumerate() {
             let child_offs = match i {
                 0 => Point3i::new(0, 0, 0),
@@ -179,6 +190,7 @@ mod octree {
             };
             if let Child::Leaf = child {
                 out.push(child_offs + *offset * 2);
+            // println!("{:?}", child_offs + *offset * 2);
             } else if let Child::Octant(id) = child {
                 out.append(&mut generate_points(
                     octants,
@@ -315,20 +327,20 @@ mod octree {
     fn test_bottom_up2() {
         let mut octants = Octants::default();
         let points = [
-            Point3i::new(0, 0, 0),
-            Point3i::new(1, 0, 0),
-            Point3i::new(0, 1, 0),
-            Point3i::new(0, 0, 1),
-            Point3i::new(1, 1, 0),
-            Point3i::new(0, 1, 1),
-            Point3i::new(1, 0, 1),
-            Point3i::new(1, 1, 1),
-            Point3i::new(2, 0, 0),
-            Point3i::new(4, 0, 0),
-            Point3i::new(6, 1, 0),
-            Point3i::new(8, 0, 1),
-            Point3i::new(10, 1, 0),
-            Point3i::new(12, 1, 1),
+            // Point3i::new(0, 0, 0),
+            // Point3i::new(1, 0, 0),
+            // Point3i::new(0, 1, 0),
+            // Point3i::new(0, 0, 1),
+            // Point3i::new(1, 1, 0),
+            // Point3i::new(0, 1, 1),
+            // Point3i::new(1, 0, 1),
+            // Point3i::new(1, 1, 1),
+            // Point3i::new(2, 0, 0),
+            // Point3i::new(4, 0, 0),
+            // Point3i::new(6, 1, 0),
+            // Point3i::new(8, 0, 1),
+            // Point3i::new(10, 1, 0),
+            // Point3i::new(12, 1, 1),
             Point3i::new(14, 14, 14),
             Point3i::new(15, 14, 14),
             Point3i::new(14, 15, 14),
@@ -346,13 +358,13 @@ mod octree {
         }
 
         let mut points_gen = generate_points(&octants, id.unwrap(), &Vec3i::zero());
+        println!("points: {:?}", points_gen);
+
         assert_eq!(points.len(), points_gen.len());
 
         for gen in points_gen.iter() {
             assert!(points.iter().find(|x| **x == *gen).is_some());
         }
-
-        println!("points: {:?}", points_gen);
 
         // println!("{:?}", octants.get(id));
         // let octant = octants.get(id);
