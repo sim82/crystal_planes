@@ -18,6 +18,9 @@ impl Vec3i {
         Vec3i(v.x() as i32, v.y() as i32, v.z() as i32)
     }
 
+    pub fn zero() -> Vec3i {
+        Vec3i(0, 0, 0)
+    }
     pub fn x(&self) -> i32 {
         self.0
     }
@@ -37,6 +40,15 @@ impl Add for Vec3i {
     #[inline]
     fn add(self, other: Self) -> Self {
         Self(self.0 + other.0, self.1 + other.1, self.2 + other.2)
+    }
+}
+
+impl Mul<i32> for Vec3i {
+    type Output = Self;
+
+    #[inline]
+    fn mul(self, other: i32) -> Self {
+        Self(self.0 * other, self.1 * other, self.2 * other)
     }
 }
 
