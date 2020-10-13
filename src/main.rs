@@ -12,6 +12,7 @@ use bevy::{
 use rand::{thread_rng, Rng};
 mod crystal;
 mod hud;
+mod octree_render;
 mod quad_render;
 use crystal::rad;
 
@@ -27,6 +28,7 @@ fn main() {
         .add_startup_system_to_stage("planes", setup_bevy.system())
         .add_startup_stage_after("planes", "renderer")
         .add_plugin(quad_render::QuadRenderPlugin::default())
+        .add_plugin(octree_render::OctreeRenderPlugin::default())
         //.add_system(light_move_system.system())
         .add_system_to_stage(stage::POST_UPDATE, light_update_system.system())
         .init_resource::<LightUpdateState>()
@@ -247,7 +249,7 @@ impl Default for DemoSystemState {
 }
 
 fn rand_color(min: f32, max: f32) -> Vec3 {
-    rad::hsv_to_rgb(thread_rng().gen_range(min, max), 1f32, 1f32)
+    crystal::util::hsv_to_rgb(thread_rng().gen_range(min, max), 1f32, 1f32)
 }
 
 fn demo_system(

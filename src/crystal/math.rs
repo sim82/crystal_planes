@@ -21,6 +21,9 @@ impl Vec3i {
     pub fn zero() -> Vec3i {
         Vec3i(0, 0, 0)
     }
+    pub fn one() -> Vec3i {
+        Vec3i(1, 1, 1)
+    }
     pub fn x(&self) -> i32 {
         self.0
     }
@@ -43,6 +46,15 @@ impl Add for Vec3i {
     }
 }
 
+impl AddAssign<Vec3i> for Vec3i {
+    #[inline]
+    fn add_assign(&mut self, other: Vec3i) {
+        self.0 += other.0;
+        self.1 += other.1;
+        self.2 += other.2;
+    }
+}
+
 impl Mul<i32> for Vec3i {
     type Output = Self;
 
@@ -50,6 +62,38 @@ impl Mul<i32> for Vec3i {
     fn mul(self, other: i32) -> Self {
         Self(self.0 * other, self.1 * other, self.2 * other)
     }
+}
+
+impl MulAssign<i32> for Vec3i {
+    #[inline]
+    fn mul_assign(&mut self, other: i32) {
+        self.0 *= other;
+        self.1 *= other;
+        self.2 *= other;
+    }
+}
+
+#[test]
+fn vec3_test() {
+    assert_eq!(Vec3i::zero() + Vec3i::zero(), Vec3i::zero());
+    assert_eq!(Vec3i::zero() + Vec3i::one(), Vec3i::one());
+    assert_eq!(Vec3i::one() + Vec3i::zero(), Vec3i::one());
+    assert_eq!(Vec3i::one() + Vec3i::one(), Vec3i::one() * 2);
+
+    let mut one_plus_one = Vec3i::one();
+    one_plus_one += Vec3i::one();
+    assert_eq!(Vec3i::one() + Vec3i::one(), one_plus_one);
+
+    let mut one_times_two = Vec3i::one();
+    one_times_two *= 2;
+    assert_eq!(Vec3i::one() * 2, one_times_two);
+
+    let t1 = Vec3i::new(1, 2, 3);
+    let t2 = Vec3i::new(4, 5, 6);
+
+    let mut t12 = t1;
+    t12 += t2;
+    assert_eq!(t1 + t2, t12);
 }
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Debug, Default)]

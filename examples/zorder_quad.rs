@@ -1,5 +1,3 @@
-use crystal_planes::crystal::math::prelude::*;
-
 fn main() {
     let points: Vec<(u32, u32)> = vec![(1, 1), (1, 2), (2, 2), (3, 2)];
 

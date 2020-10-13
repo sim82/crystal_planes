@@ -58,6 +58,8 @@ struct Plane {
     indices: [u32; 4], // indices of the attributes that belong to this plane in 'mesh_handle'
 }
 
+pub struct QuadRenderMesh;
+
 fn setup(
     mut commands: Commands,
     mut pipelines: ResMut<Assets<PipelineDescriptor>>,
@@ -189,7 +191,8 @@ fn setup(
                 })
                 .with(materials.add(MyMaterial {
                     color: Color::rgb(0.0, 0.0, 1.0),
-                }));
+                }))
+                .with(QuadRenderMesh);
 
             for p in planes.iter() {
                 // glue local Plane component (ToDo: rename) to pre-existing 'plane' entities
@@ -292,6 +295,7 @@ fn apply_frontbuf(
     rad_to_render: Res<Mutex<Receiver<rad::RadToRender>>>,
     mut diagnostics: ResMut<Diagnostics>,
     mut render_status: ResMut<crate::hud::RenderStatus>,
+
     mut rotator_system_state: ResMut<super::RotatorSystemState>,
     mut query: Query<(&rad::Plane, &Plane)>,
 ) {

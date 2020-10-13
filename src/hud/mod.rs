@@ -238,6 +238,89 @@ fn setup_hud_system(
                             ..Default::default()
                         })
                         .with(RotateButtonText);
+                })
+                .spawn(ButtonComponents {
+                    style: Style {
+                        size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        align_self: AlignSelf::FlexStart,
+                        ..Default::default()
+                    },
+                    material: button_materials.normal,
+                    ..Default::default()
+                })
+                .with(button::ToggleButton::new(
+                    |res| {
+                        let mut vis_info = res
+                            .get_mut::<super::octree_render::OctreeVisInfo>()
+                            .unwrap();
+
+                        let new = match vis_info.show_level {
+                            None => Some(0),
+                            Some(x) => Some(x + 1),
+                        };
+                        println!("octree: {:?} {:?}", vis_info.show_level, new);
+                        vis_info.show_level = new;
+                    },
+                    |_| "octree +".into(),
+                ))
+                .with_children(|parent| {
+                    parent
+                        .spawn(TextComponents {
+                            text: Text {
+                                value: "Start".to_string(),
+                                font: asset_server.load("assets/fonts/FiraSans-Bold.ttf").unwrap(),
+                                style: TextStyle {
+                                    font_size: 40.0,
+                                    color: Color::rgb(0.8, 0.8, 0.8),
+                                },
+                            },
+                            ..Default::default()
+                        })
+                        .with(RotateButtonText);
+                })
+                .spawn(ButtonComponents {
+                    style: Style {
+                        size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        align_self: AlignSelf::FlexStart,
+                        ..Default::default()
+                    },
+                    material: button_materials.normal,
+                    ..Default::default()
+                })
+                .with(button::ToggleButton::new(
+                    |res| {
+                        let mut vis_info = res
+                            .get_mut::<super::octree_render::OctreeVisInfo>()
+                            .unwrap();
+
+                        let new = match vis_info.show_level {
+                            None => None,
+                            Some(x) if x == 0 => None,
+                            Some(x) => Some(x - 1),
+                        };
+                        println!("octree: {:?} {:?}", vis_info.show_level, new);
+                        vis_info.show_level = new;
+                    },
+                    |_| "octree -".into(),
+                ))
+                .with_children(|parent| {
+                    parent
+                        .spawn(TextComponents {
+                            text: Text {
+                                value: "Start".to_string(),
+                                font: asset_server.load("assets/fonts/FiraSans-Bold.ttf").unwrap(),
+                                style: TextStyle {
+                                    font_size: 40.0,
+                                    color: Color::rgb(0.8, 0.8, 0.8),
+                                },
+                            },
+                            ..Default::default()
+                        })
+                        .with(RotateButtonText);
                 });
         });
 }

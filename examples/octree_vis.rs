@@ -5,67 +5,114 @@ use bevy::{
         mesh::shape,
     },
 };
+use crystal_planes::octree::{self, util::OctreeLoad};
+use rand::{thread_rng, Rng};
+
 fn main() {
     App::build()
         .add_default_plugins()
         .add_startup_system(setup.system())
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
+        .init_resource::<octree::Octants>()
         // .add_system(camera_order_color_system.system())
         .run();
 }
 
+struct OctreeLevel {
+    level: u32,
+}
+
 fn setup(
     mut commands: Commands,
+    mut octants: ResMut<octree::Octants>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let cube_handle = meshes.add(Mesh::from(shape::Cube { size: 1.0 }));
-    let cube_handle2 = meshes.add(Mesh::from(shape::Cube { size: 0.5 }));
-    let cube_handle3 = meshes.add(Mesh::from(shape::Cube { size: 0.25 }));
+    let root = octants
+        .load_map("assets/maps/hidden_ramp.txt")
+        .expect("failed to load octree from map");
 
-    let cube_material_handle = materials.add(StandardMaterial {
-        albedo: Color::rgba(0.5, 0.4, 0.3, 0.1),
-        ..Default::default()
-    });
+    let height = octants.get(root).level;
+    let max_level = (height + 1) as i32;
+    // let cube_meshes = (0..max_level).map(|level| {
+    //     meshes.add(Mesh::from(shape::Cube {
+    //         size: (2.0f32.powi(level)) as f32,
+    //     }))
+    // });
+
+    let mut cubes = std::collections::HashMap::new();
+
+    for octant in octants.octants.iter() {
+        // if octant.level != 0 {
+        //     continue;
+        // }
+        let (pos, size) = octant.get_geometry(height);
+        let mesh = *cubes.entry(size.0).or_insert_with(|| {
+            meshes.add(Mesh::from(shape::Cube {
+                size: size.0 as f32 * 0.125 * 0.5,
+            }))
+        });
+
+        let color = crystal_planes::crystal::util::hsv_to_rgb(
+            thread_rng().gen_range(0f32, 360f32),
+            1f32,
+            1f32,
+        );
+        let cube_material_handle = materials.add(StandardMaterial {
+            albedo: Color::rgba(color.x(), color.y(), color.z(), 1.0),
+            ..Default::default()
+        });
+
+        commands
+            .spawn(PbrComponents {
+                mesh,
+                material: cube_material_handle,
+                transform: Transform::from_translation(pos.into_vec3() * 0.125),
+                draw: Draw {
+                    is_transparent: false,
+                    is_visible: octant.level == 2,
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .with((OctreeLevel {
+                level: octant.level,
+            },));
+    }
+    // commands
+    //     // parent cube
+    //     .spawn(PbrComponents {
+    //         mesh: cube_handle,
+    //         material: cube_material_handle,
+    //         transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
+    //         draw: Draw {
+    //             is_transparent: true,
+    //             ..Default::default()
+    //         },
+    //         ..Default::default()
+    //     })
+    //     .spawn(PbrComponents {
+    //         mesh: cube_handle2,
+    //         material: cube_material_handle,
+    //         transform: Transform::from_translation(Vec3::new(0.1, 0.1, 0.1)),
+    //         draw: Draw {
+    //             is_transparent: true,
+    //             ..Default::default()
+    //         },
+    //         ..Default::default()
+    //     })
+    //     .spawn(PbrComponents {
+    //         mesh: cube_handle3,
+    //         material: cube_material_handle,
+    //         transform: Transform::from_translation(Vec3::new(0.11, 0.11, 0.11)),
+    //         draw: Draw {
+    //             is_transparent: true,
+    //             ..Default::default()
+    //         },
+    //         ..Default::default()
+    //     })
 
     commands
-        // parent cube
-        .spawn(PbrComponents {
-            mesh: cube_handle,
-            material: cube_material_handle,
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-            draw: Draw {
-                is_transparent: true,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .spawn(PbrComponents {
-            mesh: cube_handle2,
-            material: cube_material_handle,
-            transform: Transform::from_translation(Vec3::new(0.1, 0.1, 0.1)),
-            draw: Draw {
-                is_transparent: true,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .spawn(PbrComponents {
-            mesh: cube_handle3,
-            material: cube_material_handle,
-            transform: Transform::from_translation(Vec3::new(0.11, 0.11, 0.11)),
-            draw: Draw {
-                is_transparent: true,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        // light
-        // .spawn(LightComponents {
-        //     transform: Transform::from_translation(Vec3::new(4.0, 5.0, -4.0)),
-        //     ..Default::default()
-        // })
-        // camera
         .spawn(Camera3dComponents {
             transform: Transform::new(Mat4::face_toward(
                 Vec3::new(0.0, 0.0, 10.0),
@@ -76,7 +123,12 @@ fn setup(
         })
         .with(bevy_fly_camera::FlyCamera {
             mouse_drag: true,
-            sensitivity: 8.0,
+            sensitivity: 2.0,
+            ..Default::default()
+        })
+        // light
+        .spawn(LightComponents {
+            transform: Transform::from_translation(Vec3::new(4.0, 5.0, -4.0)),
             ..Default::default()
         });
 }

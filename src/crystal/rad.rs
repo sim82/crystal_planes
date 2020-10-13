@@ -49,32 +49,6 @@ pub struct Plane {
     pub buf_index: usize,
 }
 
-#[allow(dead_code)]
-pub fn hsv_to_rgb(h: f32, s: f32, v: f32) -> Vec3 {
-    let h = if h == 360.0 { 0.0 } else { h / 60.0 };
-    let fract = h - h.floor();
-
-    let p = v * (1. - s);
-    let q = v * (1. - s * fract);
-    let t = v * (1. - s * (1. - fract));
-
-    if h >= 0. && h < 1. {
-        Vec3::new(v, t, p)
-    } else if h >= 1. && h < 2. {
-        Vec3::new(q, v, p)
-    } else if h >= 2. && h < 3. {
-        Vec3::new(p, v, t)
-    } else if h >= 3. && h < 4. {
-        Vec3::new(p, q, v)
-    } else if h >= 4. && h < 5. {
-        Vec3::new(t, p, v)
-    } else if h >= 5. && h < 6. {
-        Vec3::new(v, p, q)
-    } else {
-        Vec3::zero()
-    }
-}
-
 pub enum RenderToRad {
     PointLight(usize, Vec3, Vec3),
     SetStripeColors(Vec3, Vec3),
