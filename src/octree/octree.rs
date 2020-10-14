@@ -57,9 +57,8 @@ impl Octants {
     pub fn get_mut(&mut self, id: OctantId) -> &mut Octant {
         &mut self.octants[id.0 as usize]
     }
-    pub fn get_id_iter(&self) -> Box<dyn Iterator<Item = OctantId>> {
-        // meh...
-        Box::new((0..self.octants.len()).map(|i| OctantId(i as u32)))
+    pub fn get_id_iter(&self) -> impl Iterator<Item = OctantId> {
+        (0..self.octants.len()).map(|i| OctantId(i as u32))
     }
 }
 
