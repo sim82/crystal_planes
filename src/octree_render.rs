@@ -9,6 +9,7 @@ pub struct OctreeVisInfo {
     cur_level: Option<u32>,
     cubes: HashMap<i32, Handle<Mesh>>,
     root: octree::OctantId,
+    spawned: bool,
 }
 
 impl Default for OctreeVisInfo {
@@ -18,6 +19,7 @@ impl Default for OctreeVisInfo {
             cur_level: None,
             cubes: HashMap::new(),
             root: octree::OctantId::default(),
+            spawned: false,
         }
     }
 }
@@ -26,7 +28,6 @@ fn setup(mut octants: ResMut<octree::Octants>, mut vis_info: ResMut<OctreeVisInf
     vis_info.root = octants
         .load_map("assets/maps/hidden_ramp.txt")
         .expect("failed to load octree from map");
-
     // commands
     //     // light
     //     .spawn(LightComponents {
@@ -45,7 +46,7 @@ fn vis_update_system(
     mut quad_query: Query<(Mut<Draw>, &super::quad_render::QuadRenderMesh)>,
 ) {
     match (vis_info.cur_level, vis_info.show_level) {
-        (None, Some(level)) => {
+        (None, Some(level)) if !vis_info.spawned => {
             let height = octants.get(vis_info.root).level;
             let mut num = 0;
             for id in octants.get_id_iter() {
@@ -77,15 +78,27 @@ fn vis_update_system(
                         ),
                         draw: Draw {
                             is_transparent: false,
-                            is_visible: octant.level == level,
+                            is_visible: level == octant.level,
                             ..Default::default()
                         },
                         ..Default::default()
                     })
                     .with(id);
+
                 num += 1;
             }
             println!("spawned: {}", num);
+            vis_info.spawned = true;
+
+            for (mut draw, _) in &mut quad_query.iter() {
+                draw.is_visible = false;
+            }
+        }
+        (None, Some(level)) if vis_info.spawned => {
+            for (mut draw, id, _) in &mut query.iter() {
+                draw.is_visible = Some(level) == Some(octants.get(*id).level);
+                // println!("draw: {}", draw.is_visible);
+            }
             for (mut draw, _) in &mut quad_query.iter() {
                 draw.is_visible = false;
             }
@@ -97,14 +110,10 @@ fn vis_update_system(
             }
         }
         (Some(_), None) => {
-            let mut num = 0;
-            for (_, _, ent) in &mut query.iter() {
-                commands.despawn(ent);
-                num += 1;
+            for (mut draw, _, _) in &mut query.iter() {
+                draw.is_visible = false;
                 // println!("draw: {}", draw.is_visible);
             }
-            println!("despawned: {}", num);
-
             for (mut draw, _) in &mut quad_query.iter() {
                 draw.is_visible = true;
             }
