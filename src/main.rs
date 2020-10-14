@@ -133,12 +133,12 @@ fn setup_bevy(
                 })
                 .with(RadPointLight {
                     color: Vec3::new(1.0, 0.9, 0.8),
+                })
+                // light
+                .spawn(LightComponents {
+                    transform: Transform::from_translation(Vec3::new(0.0, 0.0, 25.0)),
+                    ..Default::default()
                 });
-        })
-        // light
-        .spawn(LightComponents {
-            transform: Transform::from_translation(Vec3::new(4.0, 5.0, -4.0)),
-            ..Default::default()
         })
         // camera
         .spawn(Camera3dComponents {

@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use crate::crystal::math::prelude::*;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub struct OctantId(u32);
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Child {
@@ -297,7 +297,7 @@ fn test_bottom_up2() {
         println!("{:?}", octant);
     }
 
-    let mut points_gen = generate_points(&octants, id.unwrap(), &Vec3i::zero());
+    let points_gen = generate_points(&octants, id.unwrap(), &Vec3i::zero());
     println!("points: {:?}", points_gen);
 
     assert_eq!(points.len(), points_gen.len());
