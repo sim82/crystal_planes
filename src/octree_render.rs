@@ -1,14 +1,14 @@
+use crate::octree::{self, util::OctreeLoad};
 use std::collections::HashMap;
-
+// use crate::octree::{self, util::OctreeLoad};
 use bevy::{prelude::*, render::mesh::shape};
-use crystal_planes::octree::{self, util::OctreeLoad};
 use rand::{thread_rng, Rng};
 
 pub struct OctreeVisInfo {
     pub show_level: Option<u32>,
     cur_level: Option<u32>,
     cubes: HashMap<i32, Handle<Mesh>>,
-    root: octree::OctantId,
+    pub root: Option<octree::OctantId>,
     spawned: bool,
 }
 
@@ -18,16 +18,21 @@ impl Default for OctreeVisInfo {
             show_level: None,
             cur_level: None,
             cubes: HashMap::new(),
-            root: octree::OctantId::default(),
+            root: None,
             spawned: false,
         }
     }
 }
 
 fn setup(mut octants: ResMut<octree::Octants>, mut vis_info: ResMut<OctreeVisInfo>) {
-    vis_info.root = octants
-        .load_map("assets/maps/hidden_ramp.txt")
-        .expect("failed to load octree from map");
+    if vis_info.root.is_none() {
+        vis_info.root = octants.load_map("assets/maps/hidden_ramp.txt");
+        if !vis_info.root.is_some() {
+            panic!("vis_info root not set and failed to load from map");
+        }
+
+        // .expect("failed to load octree from map");
+    }
     // commands
     //     // light
     //     .spawn(LightComponents {
@@ -45,9 +50,14 @@ fn vis_update_system(
     mut query: Query<(Mut<Draw>, &octree::OctantId, Entity)>,
     mut quad_query: Query<(Mut<Draw>, &super::quad_render::QuadRenderMesh)>,
 ) {
+    let root = match vis_info.root {
+        Some(root) => root,
+        None => return,
+    };
+
     match (vis_info.cur_level, vis_info.show_level) {
         (None, Some(level)) if !vis_info.spawned => {
-            let height = octants.get(vis_info.root).level;
+            let height = octants.get(root).level;
             let mut num = 0;
             for id in octants.get_id_iter() {
                 let octant = octants.get(id);
@@ -59,7 +69,7 @@ fn vis_update_system(
                     .entry(size.0)
                     .or_insert_with(|| meshes.add(Mesh::from(shape::Cube { size: cube_size })));
 
-                let color = crystal_planes::crystal::util::hsv_to_rgb(
+                let color = crate::crystal::util::hsv_to_rgb(
                     thread_rng().gen_range(0f32, 360f32),
                     1f32,
                     1f32,

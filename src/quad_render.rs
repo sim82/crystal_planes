@@ -13,6 +13,13 @@ use bevy::{
     },
 };
 use rand::{thread_rng, Rng};
+
+// FIXME: this is only defined here because apply_frontbuf directly needs to modify it. Implementation should be moved from main.rs
+#[derive(Default)]
+pub struct RotatorSystemState {
+    pub run: bool,
+}
+
 #[derive(RenderResources, Default)]
 struct MyMaterial {
     pub color: Color,
@@ -296,7 +303,7 @@ fn apply_frontbuf(
     mut diagnostics: ResMut<Diagnostics>,
     mut render_status: ResMut<crate::hud::RenderStatus>,
 
-    mut rotator_system_state: ResMut<super::RotatorSystemState>,
+    mut rotator_system_state: ResMut<RotatorSystemState>,
     mut query: Query<(&rad::Plane, &Plane)>,
 ) {
     let mut update = false;

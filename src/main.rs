@@ -12,6 +12,7 @@ use bevy::{
 use rand::{thread_rng, Rng};
 mod crystal;
 mod hud;
+mod octree;
 mod octree_render;
 mod quad_render;
 use crystal::rad;
@@ -76,10 +77,7 @@ fn setup(mut commands: Commands) {
 /// this component indicates what entities should rotate
 struct Rotator;
 
-#[derive(Default)]
-struct RotatorSystemState {
-    run: bool,
-}
+use quad_render::RotatorSystemState;
 
 /// rotates the parent, which will result in the child also rotating
 fn rotator_system(
@@ -234,11 +232,7 @@ fn light_update_system(
         .unwrap();
 }
 
-struct DemoSystemState {
-    cycle: bool,
-    cycle_timer: Timer,
-}
-
+use hud::DemoSystemState;
 impl Default for DemoSystemState {
     fn default() -> Self {
         DemoSystemState {

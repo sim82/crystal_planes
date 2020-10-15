@@ -4,6 +4,13 @@ use bevy::{
 };
 
 mod button;
+
+// FIXME: only defined here because hud code directly modifies it. Implementation should be moved from main.rs
+pub struct DemoSystemState {
+    pub cycle: bool,
+    pub cycle_timer: Timer,
+}
+
 /// This example illustrates how to create text and update it in a system. It displays the current FPS in the upper left hand corner.
 pub struct RenderStatus {
     pub text: String,
@@ -172,11 +179,13 @@ fn setup_hud_system(
                 })
                 .with(button::ToggleButton::new(
                     |res| {
-                        let mut rot = res.get_mut::<super::RotatorSystemState>().unwrap();
+                        let mut rot = res
+                            .get_mut::<super::quad_render::RotatorSystemState>()
+                            .unwrap();
                         rot.run = !rot.run;
                     },
                     |res| {
-                        let rot = res.get::<super::RotatorSystemState>().unwrap();
+                        let rot = res.get::<super::quad_render::RotatorSystemState>().unwrap();
                         if rot.run {
                             "Stop".into()
                         } else {
@@ -212,11 +221,11 @@ fn setup_hud_system(
                 })
                 .with(button::ToggleButton::new(
                     |res| {
-                        let mut demo = res.get_mut::<super::DemoSystemState>().unwrap();
+                        let mut demo = res.get_mut::<DemoSystemState>().unwrap();
                         demo.cycle = !demo.cycle;
                     },
                     |res| {
-                        let demo = res.get::<super::DemoSystemState>().unwrap();
+                        let demo = res.get::<DemoSystemState>().unwrap();
                         if demo.cycle {
                             "cycle off".into()
                         } else {
