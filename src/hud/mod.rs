@@ -266,7 +266,7 @@ fn setup_hud_system(
                             .unwrap();
 
                         let new = match vis_info.show_level {
-                            None => Some(0),
+                            None => Some(1),
                             Some(x) => Some(x + 1),
                         };
                         println!("octree: {:?} {:?}", vis_info.show_level, new);
@@ -308,7 +308,7 @@ fn setup_hud_system(
 
                         let new = match vis_info.show_level {
                             None => None,
-                            Some(x) if x == 0 => None,
+                            Some(x) if x <= 1 => None,
                             Some(x) => Some(x - 1),
                         };
                         println!("octree: {:?} {:?}", vis_info.show_level, new);

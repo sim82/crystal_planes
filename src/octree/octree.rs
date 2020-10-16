@@ -5,7 +5,7 @@ use crate::crystal::math::prelude::*;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub struct OctantId(u32);
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Child {
+pub enum Voxel {
     Empty,
     Leaf,
     Octant(OctantId),
@@ -20,9 +20,15 @@ impl Debug for IdxPath {
     // fn fmt()
 }
 
+// pub enum Voxel {
+//     Leaf,
+//     Empty,
+//     Oxtant(OctantId)
+// }
+
 #[derive(Debug)]
 pub struct Octant {
-    children: [Child; 8],
+    children: [Voxel; 8],
     pub scale: u32,
     idx_path: IdxPath,
     id: OctantId,
@@ -42,9 +48,10 @@ impl Default for Octants {
 
 impl Octants {
     pub fn new(&mut self, scale: u32, coord: IdxPath) -> OctantId {
+        assert!(scale >= 1);
         let id = OctantId(self.octants.len() as u32);
         self.octants.push(Octant {
-            children: [Child::Empty; 8],
+            children: [Voxel::Empty; 8],
             scale,
             idx_path: coord,
             id,
@@ -62,7 +69,7 @@ impl Octants {
     }
 }
 
-pub fn scale0_octants(octants: &mut Octants, points: &[Point3i]) -> Vec<OctantId> {
+pub fn scale1_voxels(octants: &mut Octants, points: &[Point3i]) -> Vec<OctantId> {
     let mut zordered: Vec<usize> = points.iter().map(|p| zorder(p)).collect();
     zordered.sort_unstable();
     let mut coord_to_octant = std::collections::HashMap::new();
@@ -72,19 +79,19 @@ pub fn scale0_octants(octants: &mut Octants, points: &[Point3i]) -> Vec<OctantId
 
         let id = coord_to_octant
             .entry(coord)
-            .or_insert_with(|| octants.new(0, coord));
+            .or_insert_with(|| octants.new(1, coord));
 
         let level_coord = z & 0b111;
         let octant = octants.get_mut(*id);
-        octant.children[level_coord] = Child::Leaf;
+        octant.children[level_coord] = Voxel::Leaf;
     }
     coord_to_octant.drain().map(|(_, v)| v).collect()
 }
 
 pub fn create_octants_bottom_up(octantss: &mut Octants, points: &[Point3i]) -> Option<OctantId> {
-    let mut octants_last = scale0_octants(octantss, points);
+    let mut octants_last = scale1_voxels(octantss, points);
     // let mut octants = Vec::new();
-    for level in 1.. {
+    for level in 2.. {
         if octants_last.len() == 1 {
             break;
         }
@@ -98,7 +105,7 @@ pub fn create_octants_bottom_up(octantss: &mut Octants, points: &[Point3i]) -> O
             let octant_out = octants_out
                 .entry(coord)
                 .or_insert_with(|| octantss.new(level, coord));
-            octantss.get_mut(*octant_out).children[level_coord] = Child::Octant(*id);
+            octantss.get_mut(*octant_out).children[level_coord] = Voxel::Octant(*id);
             // octant_out.children[level_coord] = Child::Octant(oc)
         }
         octants_last = octants_out.drain().map(|(_, v)| v).collect();
@@ -127,10 +134,10 @@ pub fn generate_points(octants: &Octants, root: OctantId, offset: &Point3i) -> V
 
     for (i, child) in octant.children.iter().enumerate() {
         let child_offs = child_offset(i);
-        if let Child::Leaf = child {
+        if let Voxel::Leaf = child {
             out.push(child_offs + *offset * 2);
         // println!("{:?}", child_offs + *offset * 2);
-        } else if let Child::Octant(id) = child {
+        } else if let Voxel::Octant(id) = child {
             out.append(&mut generate_points(
                 octants,
                 *id,
@@ -188,7 +195,7 @@ fn zorder_test() {
 }
 
 #[test]
-fn level0_test() {
+fn scale1_test() {
     {
         let mut octants = Octants::default();
         let points = [
@@ -202,24 +209,24 @@ fn level0_test() {
             Point3i::new(1, 1, 1),
         ];
 
-        let l0 = scale0_octants(&mut octants, &points);
+        let l0 = scale1_voxels(&mut octants, &points);
         assert_eq!(l0.len(), 1);
-        assert_eq!(octants.get(l0[0]).children, [Child::Leaf; 8]);
+        assert_eq!(octants.get(l0[0]).children, [Voxel::Leaf; 8]);
     }
     {
         let mut octants = Octants::default();
-        let l0 = scale0_octants(&mut octants, &[Point3i::new(0, 0, 0)]);
+        let l0 = scale1_voxels(&mut octants, &[Point3i::new(0, 0, 0)]);
         assert_eq!(
             octants.get(l0[0]).children,
             [
-                Child::Leaf,
-                Child::Empty,
-                Child::Empty,
-                Child::Empty,
-                Child::Empty,
-                Child::Empty,
-                Child::Empty,
-                Child::Empty
+                Voxel::Leaf,
+                Voxel::Empty,
+                Voxel::Empty,
+                Voxel::Empty,
+                Voxel::Empty,
+                Voxel::Empty,
+                Voxel::Empty,
+                Voxel::Empty
             ]
         )
     }
@@ -251,7 +258,7 @@ fn test_bottom_up() {
     if let Some(id) = id {
         println!("{:?}", octants.get(id));
         let octant = octants.get(id);
-        if let [Child::Octant(id0), Child::Empty, Child::Empty, Child::Empty, Child::Empty, Child::Empty, Child::Empty, Child::Octant(id7)] =
+        if let [Voxel::Octant(id0), Voxel::Empty, Voxel::Empty, Voxel::Empty, Voxel::Empty, Voxel::Empty, Voxel::Empty, Voxel::Octant(id7)] =
             octant.children
         {
             let octant0 = octants.get(id0);
@@ -266,7 +273,7 @@ fn test_bottom_up() {
 fn test_bottom_up2() {
     let mut octants = Octants::default();
     let points = [
-        // Point3i::new(0, 0, 0),
+        Point3i::new(0, 0, 0),
         // Point3i::new(1, 0, 0),
         // Point3i::new(0, 1, 0),
         // Point3i::new(0, 0, 1),
@@ -293,6 +300,16 @@ fn test_bottom_up2() {
     assert!(id.is_some());
     // let id = id.unwrap();
     for octant in octants.octants.iter() {
+        for c in octant.children.iter() {
+            match c {
+                Voxel::Leaf => assert_eq!(octant.scale, 1), // only scale 1 octants have leafs
+                Voxel::Octant(child_id) => {
+                    // make sure that octants of scale are only referenced by octants of scale + 1
+                    assert_eq!(octants.get(*child_id).scale + 1, octant.scale)
+                }
+                _ => (),
+            }
+        }
         println!("{:?}", octant);
     }
 
@@ -322,14 +339,14 @@ impl Octant {
         let mut pos = Vec3i::zero();
 
         let mut coord = self.idx_path.0;
-        let mut scale = 1;
+        let mut size_mul = 2;
         for _ in self.scale..height {
-            scale *= 2;
-            pos += child_offset(coord & 0b111) * scale;
+            pos += child_offset(coord & 0b111) * size_mul;
+            size_mul *= 2;
             coord >>= 3;
         }
         let mut size = 2;
-        for _ in 0..self.scale {
+        for _ in 1..self.scale {
             pos *= 2;
             size *= 2;
         }
@@ -354,18 +371,25 @@ fn test_get_geometry() {
     assert!(id.is_some());
     // let id = id.unwrap();
 
-    for octant in octants.octants.iter() {
-        println!("{:?}", octant);
-    }
+    // for octant in octants.octants.iter() {
+    //     println!("{:?}", octant);
+    // }
 
+    let mut generated_leaf_set = std::collections::HashSet::new();
     for octant in octants.octants.iter() {
-        let (pos, size) = octant.get_geometry(3);
+        let (pos, size) = octant.get_geometry(4);
+        println!("{:?}", octant);
         println!("octant: {:?} {:?}", pos, size);
+        assert_eq!(size.0, 2i32.pow(octant.scale));
+
         for (i, child) in octant.children.iter().enumerate() {
-            if *child == Child::Leaf {
+            if *child == Voxel::Leaf {
                 let offs = child_offset(i);
                 println!("leaf: {:?}", pos + offs);
+                generated_leaf_set.insert(pos + offs);
             }
         }
     }
+
+    assert_eq!(generated_leaf_set, points.iter().cloned().collect());
 }

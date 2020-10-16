@@ -57,7 +57,7 @@ fn vis_update_system(
 
     match (vis_info.cur_level, vis_info.show_level) {
         (None, Some(level)) if !vis_info.spawned => {
-            let height = octants.get(root).scale;
+            let height = octants.get(root).scale + 1;
             let mut num = 0;
             for id in octants.get_id_iter() {
                 let octant = octants.get(id);
