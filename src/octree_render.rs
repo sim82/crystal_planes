@@ -57,7 +57,7 @@ fn vis_update_system(
 
     match (vis_info.cur_level, vis_info.show_level) {
         (None, Some(level)) if !vis_info.spawned => {
-            let height = octants.get(root).level;
+            let height = octants.get(root).scale;
             let mut num = 0;
             for id in octants.get_id_iter() {
                 let octant = octants.get(id);
@@ -88,7 +88,7 @@ fn vis_update_system(
                         ),
                         draw: Draw {
                             is_transparent: false,
-                            is_visible: level == octant.level,
+                            is_visible: level == octant.scale,
                             ..Default::default()
                         },
                         ..Default::default()
@@ -106,7 +106,7 @@ fn vis_update_system(
         }
         (None, Some(level)) if vis_info.spawned => {
             for (mut draw, id, _) in &mut query.iter() {
-                draw.is_visible = Some(level) == Some(octants.get(*id).level);
+                draw.is_visible = Some(level) == Some(octants.get(*id).scale);
                 // println!("draw: {}", draw.is_visible);
             }
             for (mut draw, _) in &mut quad_query.iter() {
@@ -115,7 +115,7 @@ fn vis_update_system(
         }
         (Some(old_level), Some(level)) if old_level != level => {
             for (mut draw, id, _) in &mut query.iter() {
-                draw.is_visible = Some(level) == Some(octants.get(*id).level);
+                draw.is_visible = Some(level) == Some(octants.get(*id).scale);
                 // println!("draw: {}", draw.is_visible);
             }
         }

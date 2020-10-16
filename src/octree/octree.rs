@@ -12,8 +12,8 @@ pub enum Child {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub struct Coord(usize);
-impl Debug for Coord {
+pub struct IdxPath(usize);
+impl Debug for IdxPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:o}", self.0)
     }
@@ -23,8 +23,8 @@ impl Debug for Coord {
 #[derive(Debug)]
 pub struct Octant {
     children: [Child; 8],
-    pub level: u32,
-    coord: Coord,
+    pub scale: u32,
+    idx_path: IdxPath,
     id: OctantId,
 }
 
@@ -41,12 +41,12 @@ impl Default for Octants {
 }
 
 impl Octants {
-    pub fn new(&mut self, level: u32, coord: Coord) -> OctantId {
+    pub fn new(&mut self, scale: u32, coord: IdxPath) -> OctantId {
         let id = OctantId(self.octants.len() as u32);
         self.octants.push(Octant {
             children: [Child::Empty; 8],
-            level,
-            coord,
+            scale,
+            idx_path: coord,
             id,
         });
         id
@@ -62,13 +62,13 @@ impl Octants {
     }
 }
 
-pub fn level0_octants(octants: &mut Octants, points: &[Point3i]) -> Vec<OctantId> {
+pub fn scale0_octants(octants: &mut Octants, points: &[Point3i]) -> Vec<OctantId> {
     let mut zordered: Vec<usize> = points.iter().map(|p| zorder(p)).collect();
     zordered.sort_unstable();
     let mut coord_to_octant = std::collections::HashMap::new();
 
     for z in zordered {
-        let coord = Coord(z >> 3);
+        let coord = IdxPath(z >> 3);
 
         let id = coord_to_octant
             .entry(coord)
@@ -82,7 +82,7 @@ pub fn level0_octants(octants: &mut Octants, points: &[Point3i]) -> Vec<OctantId
 }
 
 pub fn create_octants_bottom_up(octantss: &mut Octants, points: &[Point3i]) -> Option<OctantId> {
-    let mut octants_last = level0_octants(octantss, points);
+    let mut octants_last = scale0_octants(octantss, points);
     // let mut octants = Vec::new();
     for level in 1.. {
         if octants_last.len() == 1 {
@@ -92,8 +92,8 @@ pub fn create_octants_bottom_up(octantss: &mut Octants, points: &[Point3i]) -> O
 
         for id in octants_last.iter() {
             let octant = octantss.get(*id);
-            let coord = Coord(octant.coord.0 >> 3);
-            let level_coord = octant.coord.0 & 0b111;
+            let coord = IdxPath(octant.idx_path.0 >> 3);
+            let level_coord = octant.idx_path.0 & 0b111;
 
             let octant_out = octants_out
                 .entry(coord)
@@ -202,13 +202,13 @@ fn level0_test() {
             Point3i::new(1, 1, 1),
         ];
 
-        let l0 = level0_octants(&mut octants, &points);
+        let l0 = scale0_octants(&mut octants, &points);
         assert_eq!(l0.len(), 1);
         assert_eq!(octants.get(l0[0]).children, [Child::Leaf; 8]);
     }
     {
         let mut octants = Octants::default();
-        let l0 = level0_octants(&mut octants, &[Point3i::new(0, 0, 0)]);
+        let l0 = scale0_octants(&mut octants, &[Point3i::new(0, 0, 0)]);
         assert_eq!(
             octants.get(l0[0]).children,
             [
@@ -321,15 +321,15 @@ impl Octant {
     pub fn get_geometry(&self, height: u32) -> (Vec3i, Vec3i) {
         let mut pos = Vec3i::zero();
 
-        let mut coord = self.coord.0;
+        let mut coord = self.idx_path.0;
         let mut scale = 1;
-        for _ in self.level..height {
+        for _ in self.scale..height {
             scale *= 2;
             pos += child_offset(coord & 0b111) * scale;
             coord >>= 3;
         }
         let mut size = 2;
-        for _ in 0..self.level {
+        for _ in 0..self.scale {
             pos *= 2;
             size *= 2;
         }

@@ -32,7 +32,7 @@ fn setup(
         .load_map("assets/maps/hidden_ramp.txt")
         .expect("failed to load octree from map");
 
-    let height = octants.get(root).level;
+    let height = octants.get(root).scale;
     let max_level = (height + 1) as i32;
     // let cube_meshes = (0..max_level).map(|level| {
     //     meshes.add(Mesh::from(shape::Cube {
@@ -70,13 +70,13 @@ fn setup(
                 transform: Transform::from_translation(pos.into_vec3() * 0.125),
                 draw: Draw {
                     is_transparent: false,
-                    is_visible: octant.level == 2,
+                    is_visible: octant.scale == 2,
                     ..Default::default()
                 },
                 ..Default::default()
             })
             .with((OctreeLevel {
-                level: octant.level,
+                level: octant.scale,
             },));
     }
     // commands
