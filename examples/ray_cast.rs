@@ -43,3 +43,153 @@ fn setup(
             ..Default::default()
         });
 }
+
+fn min2(x: f32, y: f32) -> f32 {
+    if x < y {
+        x
+    } else {
+        y
+    }
+}
+fn min3(x: f32, y: f32, z: f32) -> f32 {
+    min2(min2(x, y), z)
+}
+fn min4(x: f32, y: f32, z: f32, w: f32) -> f32 {
+    min3(min2(x, y), z, w)
+}
+
+fn max2(x: f32, y: f32) -> f32 {
+    if x > y {
+        x
+    } else {
+        y
+    }
+}
+
+fn max3(x: f32, y: f32, z: f32) -> f32 {
+    max2(max2(x, y), z)
+}
+
+fn max4(x: f32, y: f32, z: f32, w: f32) -> f32 {
+    max3(max2(x, y), z, w)
+}
+
+fn cast_ray(octants: &octree::Octants, root: octree::OctantId, p: Vec3, d: Vec3) {
+    let s_max = 23u32;
+    // let epsilon = (-s_max)
+    let mut stack = vec![(octree::OctantId::default(), 0f32); (s_max + 1) as usize];
+
+    let tx_coef = 1f32 / d.x().abs();
+    let ty_coef = 1f32 / d.y().abs();
+    let tz_coef = 1f32 / d.z().abs();
+
+    let tx_bias = tx_coef * p.x();
+    let ty_bias = ty_coef * p.y();
+    let tz_bias = tz_coef * p.z();
+
+    // TODO: octant mirroring stuff
+    assert!(d.x() <= 0f32);
+    assert!(d.y() <= 0f32);
+    assert!(d.z() <= 0f32);
+
+    // todo: check if min/max stuff works in 'non 1-2 world' as in paper (or normalize voxel position/size to 1-2 or 0-1 space for casting)
+    let t_min = max4(
+        2f32 * tx_coef - tx_bias,
+        2f32 * ty_coef - ty_bias,
+        2f32 * tz_coef - tz_bias,
+        0f32,
+    );
+    let t_max = min3(tx_coef - tx_bias, ty_coef - ty_bias, ty_coef - ty_bias);
+    let mut h = t_max;
+    let mut t_max = min2(t_max, 1f32);
+
+    let mut parent = root;
+    let mut idx = 0;
+    let mut pos = Vec3::zero();
+    assert!(octants.get(root).scale >= 1); // impossible in a well formed tree
+    let mut scale = octants.get(root).scale - 1;
+    let mut scale_exp2 = 0.5f32;
+
+    if 0.5f32 * tx_coef - tx_bias > t_min {
+        idx ^= 1;
+        *pos.x_mut() = 0.5f32
+    };
+    if 0.5f32 * ty_coef - ty_bias > t_min {
+        idx ^= 2;
+        *pos.y_mut() = 0.5f32
+    };
+    if 0.5f32 * tz_coef - tz_bias > t_min {
+        idx ^= 4;
+        *pos.z_mut() = 0.5f32
+    };
+
+    while scale < s_max {
+        let octant = octants.get(parent);
+
+        let tx_corner = pos.x() * tx_coef - tx_bias;
+        let ty_corner = pos.y() * ty_coef - ty_bias;
+        let tz_corner = pos.z() * tz_coef - tz_bias;
+        let tc_max = min3(tx_corner, ty_corner, tz_corner);
+
+        if octant.children[idx] != octree::Voxel::Empty && t_min < t_max {
+            let tv_max = min2(t_max, tc_max);
+            let half = scale_exp2 * 0.5f32;
+            let tx_center = half * tx_coef + tx_corner;
+            let ty_center = half * ty_coef + ty_corner;
+            let tz_center = half * tz_coef + tz_corner;
+
+            if t_min <= tv_max {
+                if let octree::Voxel::Octant(child_id) = octant.children[idx] {
+                    // PUSH
+                    if tc_max < h {
+                        stack[scale as usize] = (parent, t_max);
+                    }
+                    h = tc_max;
+
+                    parent = child_id;
+                    idx = 0;
+                    scale -= 1;
+                    scale_exp2 = half;
+                    if tx_center > t_min {
+                        idx ^= 1;
+                        *pos.x_mut() += scale_exp2;
+                    }
+                    if ty_center > t_min {
+                        idx ^= 2;
+                        *pos.y_mut() += scale_exp2;
+                    }
+                    if tz_center > t_min {
+                        idx ^= 4;
+                        *pos.z_mut() += scale_exp2;
+                    }
+
+                    t_max = tv_max;
+                    continue;
+                } else {
+                    break;
+                }
+                // ADVANCE
+                let mut step_mask = 0;
+                if tx_corner <= tc_max {
+                    step_mask ^= 1;
+                    *pos.x_mut() -= scale_exp2;
+                }
+                if ty_corner <= tc_max {
+                    step_mask ^= 2;
+                    *pos.y_mut() -= scale_exp2;
+                }
+                if tz_corner <= tc_max {
+                    step_mask ^= 4;
+                    *pos.z_mut() -= scale_exp2;
+                }
+                t_min = tc_max;
+                idx ^= step_mask;
+
+                if idx & step_mask != 0 {
+                    // POP
+                    // TODO: zorder magick...
+                }
+            }
+        }
+    }
+}

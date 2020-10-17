@@ -28,7 +28,7 @@ impl Debug for IdxPath {
 
 #[derive(Debug)]
 pub struct Octant {
-    children: [Voxel; 8],
+    pub children: [Voxel; 8],
     pub scale: u32,
     idx_path: IdxPath,
     id: OctantId,
