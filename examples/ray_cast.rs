@@ -101,7 +101,7 @@ fn cast_ray(octants: &octree::Octants, root: octree::OctantId, p: Vec3, d: Vec3)
     let bounds_min = root_pos.x() as f32;
     let bounds_max = (root_pos.x() + root_size.x()) as f32;
     // todo: check if min/max stuff works in 'non 1-2 world' as in paper (or normalize voxel position/size to 1-2 or 0-1 space for casting)
-    let t_min = max4(
+    let mut t_min = max4(
         bounds_max * tx_coef - tx_bias,
         bounds_max * ty_coef - ty_bias,
         bounds_max * tz_coef - tz_bias,
@@ -146,15 +146,17 @@ fn cast_ray(octants: &octree::Octants, root: octree::OctantId, p: Vec3, d: Vec3)
         let tc_max = min3(tx_corner, ty_corner, tz_corner);
 
         println!(
-            "idx: {} pos: {:?} t_corner: {:?}",
+            "idx: {} pos: {:?} t_corner: {:?} scale: {}",
             idx,
             pos,
-            (tx_corner, ty_corner, tz_corner)
+            (tx_corner, ty_corner, tz_corner),
+            scale
         );
 
         if octant.children[idx] != octree::Voxel::Empty && t_min < t_max {
             let tv_max = min2(t_max, tc_max);
-            let half = scale_exp2 * 0.5f32;
+            //let half = scale_exp2 * 0.5f32;
+            let half = bounds_max * 0.5;
             let tx_center = half * tx_coef + tx_corner;
             let ty_center = half * ty_coef + ty_corner;
             let tz_center = half * tz_coef + tz_corner;
@@ -162,6 +164,8 @@ fn cast_ray(octants: &octree::Octants, root: octree::OctantId, p: Vec3, d: Vec3)
             if t_min <= tv_max {
                 if let octree::Voxel::Octant(child_id) = octant.children[idx] {
                     // PUSH
+                    println!("push");
+
                     if tc_max < h {
                         stack[scale as usize] = (parent, t_max);
                     }
@@ -189,29 +193,29 @@ fn cast_ray(octants: &octree::Octants, root: octree::OctantId, p: Vec3, d: Vec3)
                 } else {
                     break;
                 }
-                // ADVANCE
-                let mut step_mask = 0;
-                if tx_corner <= tc_max {
-                    step_mask ^= 1;
-                    *pos.x_mut() -= scale_exp2;
-                }
-                if ty_corner <= tc_max {
-                    step_mask ^= 2;
-                    *pos.y_mut() -= scale_exp2;
-                }
-                if tz_corner <= tc_max {
-                    step_mask ^= 4;
-                    *pos.z_mut() -= scale_exp2;
-                }
-                t_min = tc_max;
-                idx ^= step_mask;
-
-                if idx & step_mask != 0 {
-                    // POP
-                    // TODO: zorder magick...
-                    panic!("pop");
-                }
             }
+        }
+        // ADVANCE
+        let mut step_mask = 0;
+        if tx_corner <= tc_max {
+            step_mask ^= 1;
+            *pos.x_mut() -= scale_exp2;
+        }
+        if ty_corner <= tc_max {
+            step_mask ^= 2;
+            *pos.y_mut() -= scale_exp2;
+        }
+        if tz_corner <= tc_max {
+            step_mask ^= 4;
+            *pos.z_mut() -= scale_exp2;
+        }
+        t_min = tc_max;
+        idx ^= step_mask;
+
+        if idx & step_mask != 0 {
+            // POP
+            // TODO: zorder magick...
+            panic!("pop");
         }
     }
 }
@@ -220,27 +224,31 @@ fn cast_ray(octants: &octree::Octants, root: octree::OctantId, p: Vec3, d: Vec3)
 fn test_cast1() {
     let mut octants = octree::Octants::default();
 
-    let points = [
-        Point3i::new(0, 0, 0),
-        Point3i::new(15, 8, 8),
-        Point3i::new(15, 15, 15),
-    ];
+    let points: Vec<Vec3i> = (0..16)
+        .zip((0..16).zip(0..16))
+        .map(|(x, (y, z))| Point3i::new(x, y, z))
+        .collect();
+    // let points = [
+    //     Point3i::new(0, 0, 0),
+    //     Point3i::new(15, 8, 8),
+    //     Point3i::new(15, 15, 15),
+    // ];
     let root =
         octree::create_octants_bottom_up(&mut octants, &points).expect("failed to create octree");
 
     cast_ray(
         &octants,
         root,
-        Vec3::new(20f32, 15.5f32, 15.5f32),
+        Vec3::new(20f32, 12f32, 12f32),
         Vec3::new(-8f32, -0.1f32, -0.1f32),
     );
 
-    cast_ray(
-        &octants,
-        root,
-        Vec3::new(20f32, 8.5f32, 8.5f32),
-        Vec3::new(-20f32, -0.1f32, -0.1f32),
-    );
+    // cast_ray(
+    //     &octants,
+    //     root,
+    //     Vec3::new(20f32, 4f32, 4f32),
+    //     Vec3::new(-20f32, -0.1f32, -0.1f32),
+    // );
 
     // cast_ray(
     //     &octants,
@@ -259,63 +267,82 @@ fn test_cast1() {
 
 #[test]
 fn test_raycast_math() {
-    let p = Vec3::new(20f32, 12f32, 12f32);
-    let d = Vec3::new(-8f32, -0.1f32, -0.1f32);
-
-    let tx_coef = -1f32 / d.x().abs();
-    let ty_coef = -1f32 / d.y().abs();
-    let tz_coef = -1f32 / d.z().abs();
-
-    let tx_bias = tx_coef * p.x();
-    let ty_bias = ty_coef * p.y();
-    let tz_bias = tz_coef * p.z();
-
-    // let t_coef = Vec3::new(1f32 / d.x().abs(), 1f32 / d.y().abs(), 1f32 / d.z().abs());
-    // let t_bias = t_coef * p;
-
-    println!(
-        "coef: {:?} bias: {:?}",
-        (tx_coef, ty_coef, tz_coef),
-        (tx_bias, ty_bias, tz_bias)
+    test(
+        Vec3::new(20f32, 4f32, 4f32),
+        Vec3::new(-8f32, -0.1f32, -0.1f32),
     );
-
-    // TODO: octant mirroring stuff
-    assert!(d.x() <= 0f32);
-    assert!(d.y() <= 0f32);
-    assert!(d.z() <= 0f32);
-
-    let bounds_min = 0f32;
-    let bounds_max = 16f32;
-    // todo: check if min/max stuff works in 'non 1-2 world' as in paper (or normalize voxel position/size to 1-2 or 0-1 space for casting)
-    let t_min = max4(
-        bounds_max * tx_coef - tx_bias,
-        bounds_max * ty_coef - ty_bias,
-        bounds_max * tz_coef - tz_bias,
-        0f32,
+    test(
+        Vec3::new(20f32, 12f32, 4f32),
+        Vec3::new(-8f32, -0.1f32, -0.1f32),
     );
-    let t_max = min3(
-        bounds_min * tx_coef - tx_bias,
-        bounds_min * ty_coef - ty_bias,
-        bounds_min * ty_coef - ty_bias,
+    test(
+        Vec3::new(20f32, 4f32, 12f32),
+        Vec3::new(-8f32, -0.1f32, -0.1f32),
     );
-    let mut h = t_max;
-    let mut t_max = min2(t_max, 1f32);
+    test(
+        Vec3::new(20f32, 12f32, 12f32),
+        Vec3::new(-8f32, -0.1f32, -0.1f32),
+    );
+    test(
+        Vec3::new(4f32, 20f32, 4f32),
+        Vec3::new(-0.1f32, -8f32, -0.1f32),
+    );
+    fn test(p: Vec3, d: Vec3) {
+        let tx_coef = -1f32 / d.x().abs();
+        let ty_coef = -1f32 / d.y().abs();
+        let tz_coef = -1f32 / d.z().abs();
 
-    println!("t_min: {} t_max: {}", t_min, t_max);
-    let mut idx = 0;
-    let mut pos = Vec3::zero();
-    if 0.5 * bounds_max * tx_coef - tx_bias > t_min {
-        idx ^= 1;
-        *pos.x_mut() = 0.5 * bounds_max;
-    };
-    if 0.5 * bounds_max * ty_coef - ty_bias > t_min {
-        idx ^= 2;
-        *pos.y_mut() = 0.5 * bounds_max;
-    };
-    if 0.5 * bounds_max * tz_coef - tz_bias > t_min {
-        idx ^= 4;
-        *pos.z_mut() = 0.5 * bounds_max;
-    };
+        let tx_bias = tx_coef * p.x();
+        let ty_bias = ty_coef * p.y();
+        let tz_bias = tz_coef * p.z();
 
-    println!("idx: {} pos: {:?}", idx, pos);
+        // let t_coef = Vec3::new(1f32 / d.x().abs(), 1f32 / d.y().abs(), 1f32 / d.z().abs());
+        // let t_bias = t_coef * p;
+
+        println!(
+            "coef: {:?} bias: {:?}",
+            (tx_coef, ty_coef, tz_coef),
+            (tx_bias, ty_bias, tz_bias)
+        );
+
+        // TODO: octant mirroring stuff
+        assert!(d.x() <= 0f32);
+        assert!(d.y() <= 0f32);
+        assert!(d.z() <= 0f32);
+
+        let bounds_min = 0f32;
+        let bounds_max = 16f32;
+        // todo: check if min/max stuff works in 'non 1-2 world' as in paper (or normalize voxel position/size to 1-2 or 0-1 space for casting)
+        let t_min = max4(
+            bounds_max * tx_coef - tx_bias,
+            bounds_max * ty_coef - ty_bias,
+            bounds_max * tz_coef - tz_bias,
+            0f32,
+        );
+        let t_max = min3(
+            bounds_min * tx_coef - tx_bias,
+            bounds_min * ty_coef - ty_bias,
+            bounds_min * ty_coef - ty_bias,
+        );
+        let mut h = t_max;
+        let mut t_max = min2(t_max, 1f32);
+
+        println!("t_min: {} t_max: {}", t_min, t_max);
+        let mut idx = 0;
+        let mut pos = Vec3::zero();
+        if 0.5 * bounds_max * tx_coef - tx_bias > t_min {
+            idx ^= 1;
+            *pos.x_mut() = 0.5 * bounds_max;
+        };
+        if 0.5 * bounds_max * ty_coef - ty_bias > t_min {
+            idx ^= 2;
+            *pos.y_mut() = 0.5 * bounds_max;
+        };
+        if 0.5 * bounds_max * tz_coef - tz_bias > t_min {
+            idx ^= 4;
+            *pos.z_mut() = 0.5 * bounds_max;
+        };
+
+        println!("idx: {} pos: {:?}", idx, pos);
+    }
 }
