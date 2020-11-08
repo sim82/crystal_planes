@@ -20,7 +20,7 @@ use crystal::rad;
 /// This example illustrates how to create a custom material asset and a shader that uses that material
 fn main() {
     App::build()
-        .add_default_plugins()
+        .add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         // .add_plugin(PrintDiagnosticsPlugin::default())
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
@@ -88,7 +88,7 @@ fn rotator_system(
     if !state.run {
         return;
     }
-    for (_rotator, mut transform) in &mut query.iter() {
+    for (_rotator, mut transform) in query.iter_mut() {
         transform.rotate(Quat::from_rotation_y(0.5 * time.delta_seconds));
     }
 }
@@ -140,7 +140,7 @@ fn setup_bevy(
         })
         // camera
         .spawn(Camera3dComponents {
-            transform: Transform::new(Mat4::face_toward(
+            transform: Transform::from_matrix(Mat4::face_toward(
                 Vec3::new(5.0, 10.0, 10.0),
                 Vec3::new(0.0, 0.0, 0.0),
                 Vec3::new(0.0, 1.0, 0.0),
@@ -215,7 +215,7 @@ fn light_update_system(
     // Mutated<GlobalTransform>)>,
     // _: Mutated<Position>,
 ) {
-    let pos = transform.translation() * 4.0;
+    let pos = transform.translation * 4.0;
 
     // FIXME: shouldn't Mutated<GlobalTransform>)> do this?
     if Some(pos) == state.last_pos {

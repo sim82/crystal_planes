@@ -53,7 +53,7 @@ fn toggle_button_system(world: &mut World, res: &mut Resources) {
         Mutated<Interaction>,
         &mut Handle<ColorMaterial>,
     )>();
-    for (mut toggle_button, _children, interaction, mut material) in &mut query.iter() {
+    for (mut toggle_button, _children, interaction, mut material) in query {
         match *interaction {
             Interaction::Clicked => {
                 {
@@ -61,15 +61,15 @@ fn toggle_button_system(world: &mut World, res: &mut Resources) {
                     action(res);
                 }
                 let button_materials = res.get::<ButtonMaterials>().unwrap();
-                *material = button_materials.pressed;
+                *material = button_materials.pressed.clone();
             }
             Interaction::Hovered => {
                 let button_materials = res.get::<ButtonMaterials>().unwrap();
-                *material = button_materials.hovered;
+                *material = button_materials.hovered.clone();
             }
             Interaction::None => {
                 let button_materials = res.get::<ButtonMaterials>().unwrap();
-                *material = button_materials.normal;
+                *material = button_materials.normal.clone();
             }
         }
     }
@@ -79,7 +79,7 @@ fn toggle_button_text_system(world: &mut World, res: &mut Resources) {
     let mut set_texts = Vec::new();
     let mut query = world.query::<(&ToggleButton, &Children)>();
 
-    for (toggle_button, children) in &mut query.iter() {
+    for (toggle_button, children) in query {
         let get_label = &*toggle_button.get_label;
         set_texts.push((children[0], get_label(res)));
     }

@@ -11,6 +11,7 @@ use bevy::{
         renderer::RenderResources,
         shader::{ShaderStage, ShaderStages},
     },
+    type_registry::TypeUuid,
 };
 use rand::{thread_rng, Rng};
 
@@ -20,7 +21,8 @@ pub struct RotatorSystemState {
     pub run: bool,
 }
 
-#[derive(RenderResources, Default)]
+#[derive(RenderResources, Default, TypeUuid)]
+#[uuid = "213b8673-5cf1-441e-b98d-4602a612567e"]
 struct MyMaterial {
     pub color: Color,
 }
@@ -117,7 +119,7 @@ fn setup(
     // Setup our world
     commands
         .spawn(Camera3dComponents {
-            transform: Transform::new(Mat4::face_toward(
+            transform: Transform::from_matrix(Mat4::face_toward(
                 Vec3::new(10.0, 5.0, 40.0),
                 Vec3::new(10.0, 5.0, 0.0),
                 Vec3::new(0.0, 1.0, 0.0),
@@ -179,20 +181,26 @@ fn setup(
     let mut spawn_mesh = {
         // FIXME: why is type inference for 'planes' broken?
         |position, normal, uv, index, planes: Vec<u32>| {
-            let mesh = Mesh {
-                primitive_topology: bevy::render::pipeline::PrimitiveTopology::TriangleList,
-                attributes: vec![
-                    bevy::render::mesh::VertexAttribute::position(position),
-                    bevy::render::mesh::VertexAttribute::normal(normal),
-                    bevy::render::mesh::VertexAttribute::uv(uv),
-                ],
-                indices: Some(index),
-            };
+            let mut mesh = Mesh::new(bevy::render::pipeline::PrimitiveTopology::TriangleList);
+            //  {
+            //     primitive_topology: bevy::render::pipeline::PrimitiveTopology::TriangleList,
+            //     // attributes: vec![
+            //     //     bevy::render::mesh::VertexAttribute::position(position),
+            //     //     bevy::render::mesh::VertexAttribute::normal(normal),
+            //     //     bevy::render::mesh::VertexAttribute::uv(uv),
+            //     // ],
+            //     indices: Some(index),
+            // };
+
+            mesh.set_attribute(bevy::render::mesh::Mesh::ATTRIBUTE_POSITION, position);
+            mesh.set_attribute(bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL, normal);
+            mesh.set_attribute(bevy::render::mesh::Mesh::ATTRIBUTE_UV_0, uv);
+            mesh.set_indices(Some(index));
 
             let mesh_handle = meshes.add(mesh);
             commands
                 .spawn(MeshComponents {
-                    mesh: mesh_handle,
+                    mesh: mesh_handle.clone(),
                     render_pipelines: pipelines.clone(),
                     ..Default::default()
                 })
@@ -209,7 +217,7 @@ fn setup(
                         .expect("missing entity for plane index"),
                     PlaneComponents {
                         plane: Plane {
-                            mesh_handle,
+                            mesh_handle: mesh_handle.clone(),
                             indices: [p + 0, p + 1, p + 2, p + 3],
                         },
                     },
@@ -226,7 +234,13 @@ fn setup(
     let mut planes = Vec::new();
     for (mesh, trans) in meshes_tmp.iter() {
         if position.len() > 256 * 256 - 4 {
-            spawn_mesh(position, normal, uv, index, planes);
+            spawn_mesh(
+                bevy::render::mesh::VertexAttributeValues::Float3(position),
+                bevy::render::mesh::VertexAttributeValues::Float3(normal),
+                bevy::render::mesh::VertexAttributeValues::Float2(uv),
+                bevy::render::mesh::Indices::U32(index),
+                planes,
+            );
 
             position = Vec::new();
             normal = Vec::new();
@@ -237,64 +251,64 @@ fn setup(
 
         let index_offset = position.len() as u32;
         planes.push(index_offset); // this is also the first index that belongs to the current plane
-        for attribute in &mesh.attributes {
-            if attribute.name == "Vertex_Position" {
-                match &attribute.values {
-                    VertexAttributeValues::Float3(vs) => {
-                        for v in vs {
-                            let v: Vec3 = v.clone().into();
-                            let v: Vec3 = (*trans * v.extend(1.0)).truncate().into();
-                            position.push([v.x(), v.y(), v.z()]);
-                        }
-                    }
-                    _ => panic!("expected Vertex_Position to be Float3"),
-                }
-            } else if attribute.name == "Vertex_Normal" {
-                match &attribute.values {
-                    VertexAttributeValues::Float3(vs) => normal.append(&mut vs.clone()),
-                    _ => panic!("expected Vertex_Normal to be Float3"),
-                }
-            // normal.append(other)
-            } else if attribute.name == "Vertex_Uv" {
-                match &attribute.values {
-                    VertexAttributeValues::Float2(vs) => uv.append(&mut vs.clone()),
-                    _ => panic!("expected Vertex_Uv to be Float2"),
+        match mesh.attribute(bevy::render::mesh::Mesh::ATTRIBUTE_POSITION) {
+            Some(VertexAttributeValues::Float3(vs)) => {
+                for v in vs {
+                    let v: Vec3 = v.clone().into();
+                    let v: Vec3 = (*trans * v.extend(1.0)).truncate().into();
+                    position.push([v.x(), v.y(), v.z()]);
                 }
             }
-        }
-        match &mesh.indices {
-            Some(indices) => {
+            _ => panic!("expected Vertex_Position to be Float3"),
+        };
+        match mesh.attribute(bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL) {
+            Some(VertexAttributeValues::Float3(vs)) => normal.append(&mut vs.clone()),
+            _ => panic!("expected Vertex_Normal to be Float3"),
+        };
+        match mesh.attribute(bevy::render::mesh::Mesh::ATTRIBUTE_UV_0) {
+            Some(VertexAttributeValues::Float2(vs)) => uv.append(&mut vs.clone()),
+            _ => panic!("expected Vertex_Uv to be Float2"),
+        };
+
+        match mesh.indices() {
+            Some(bevy::render::mesh::Indices::U32(indices)) => {
                 index.append(&mut indices.iter().map(|i| i + index_offset).collect());
             }
-            _ => panic!("expected index array"),
+            _ => panic!("expected U32 index array"),
         }
     }
-    spawn_mesh(position, normal, uv, index, planes);
+    spawn_mesh(
+        bevy::render::mesh::VertexAttributeValues::Float3(position),
+        bevy::render::mesh::VertexAttributeValues::Float3(normal),
+        bevy::render::mesh::VertexAttributeValues::Float2(uv),
+        bevy::render::mesh::Indices::U32(index),
+        planes,
+    );
 }
 
-fn _blink_system(mut meshes: ResMut<Assets<Mesh>>, plane: &Plane) {
-    // println!("blink");
-    let mesh = meshes
-        .get_mut(&plane.mesh_handle)
-        .expect("bad mesh_handle in Plane entitiy");
+// fn _blink_system(mut meshes: ResMut<Assets<Mesh>>, plane: &Plane) {
+//     // println!("blink");
+//     let mesh = meshes
+//         .get_mut(&plane.mesh_handle)
+//         .expect("bad mesh_handle in Plane entitiy");
 
-    for a in &mut mesh.attributes {
-        if a.name == "Vertex_Normal" {
-            match &mut a.values {
-                VertexAttributeValues::Float3(ref mut vs) => {
-                    let color =
-                        Color::rgb(thread_rng().gen(), thread_rng().gen(), thread_rng().gen());
-                    for i in plane.indices.iter() {
-                        vs[*i as usize][0] = color.r;
-                        vs[*i as usize][1] = color.g;
-                        vs[*i as usize][2] = color.b;
-                    }
-                }
-                _ => panic!("expected Vertex_Normal to be Float3"),
-            }
-        }
-    }
-}
+//     for a in &mut mesh.attributes {
+//         if a.name == "Vertex_Normal" {
+//             match &mut a.values {
+//                 VertexAttributeValues::Float3(ref mut vs) => {
+//                     let color =
+//                         Color::rgb(thread_rng().gen(), thread_rng().gen(), thread_rng().gen());
+//                     for i in plane.indices.iter() {
+//                         vs[*i as usize][0] = color.r;
+//                         vs[*i as usize][1] = color.g;
+//                         vs[*i as usize][2] = color.b;
+//                     }
+//                 }
+//                 _ => panic!("expected Vertex_Normal to be Float3"),
+//             }
+//         }
+//     }
+// }
 
 fn apply_frontbuf(
     front_buf: Res<rad::FrontBuf>,
@@ -340,25 +354,26 @@ fn apply_frontbuf(
 
         // consecutive planes will mostly be located in the same mesh
         if mesh_handle != plane.mesh_handle {
-            mesh_handle = plane.mesh_handle;
+            mesh_handle = plane.mesh_handle.clone();
             mesh_opt = meshes.get_mut(&plane.mesh_handle);
         }
 
         if let Some(ref mut mesh) = mesh_opt {
-            for a in &mut mesh.attributes {
-                if a.name == "Vertex_Normal" {
-                    match &mut a.values {
-                        VertexAttributeValues::Float3(ref mut vs) => {
-                            for i in plane.indices.iter() {
-                                vs[*i as usize][0] = r;
-                                vs[*i as usize][1] = g;
-                                vs[*i as usize][2] = b;
-                            }
-                        }
-                        _ => panic!("expected Vertex_Normal to be Float3"),
+            match mesh.attribute(bevy::render::mesh::Mesh::ATTRIBUTE_POSITION) {
+                Some(VertexAttributeValues::Float3(vs)) => {
+                    let mut vs2 = vs.clone();
+                    for i in plane.indices.iter() {
+                        vs2[*i as usize][0] = r;
+                        vs2[*i as usize][1] = g;
+                        vs2[*i as usize][2] = b;
                     }
+                    mesh.set_attribute(
+                        bevy::render::mesh::Mesh::ATTRIBUTE_POSITION,
+                        bevy::render::mesh::VertexAttributeValues::Float3(vs2),
+                    );
                 }
-            }
+                _ => panic!("expected Vertex_Normal to be Float3"),
+            };
         }
     }
 }

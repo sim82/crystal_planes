@@ -4,7 +4,7 @@ use crystal_planes::octree;
 use crystal_planes::octree_render;
 fn main() {
     App::build()
-        .add_default_plugins()
+        .add_plugins(DefaultPlugins)
         .add_startup_stage("renderer")
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
         .add_plugin(octree_render::OctreeRenderPlugin::default())
@@ -25,7 +25,7 @@ fn setup(
 
     commands
         .spawn(Camera3dComponents {
-            transform: Transform::new(Mat4::face_toward(
+            transform: Transform::from_matrix(Mat4::face_toward(
                 Vec3::new(0.0, 0.0, 10.0),
                 Vec3::new(0.0, 0.0, 0.0),
                 Vec3::new(0.0, 1.0, 0.0),

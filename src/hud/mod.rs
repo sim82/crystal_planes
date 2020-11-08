@@ -45,7 +45,7 @@ fn update_hud_system(
     render_status: Res<RenderStatus>,
     mut query: Query<(&mut Text, &HudSrc)>,
 ) {
-    for (mut text, src) in &mut query.iter() {
+    for (mut text, src) in query.iter_mut() {
         match src {
             HudSrc::Diagnostics(diag_text, id, unit) => {
                 if let Some(fps) = diagnostics.get(*id) {
@@ -81,9 +81,7 @@ fn setup_hud_system(
     mut _materials: ResMut<Assets<ColorMaterial>>,
     button_materials: Res<button::ButtonMaterials>,
 ) {
-    let font_handle = asset_server
-        .load("assets/fonts/FiraMono-Medium.ttf")
-        .unwrap();
+    let font_handle = asset_server.load("assets/fonts/FiraMono-Medium.ttf");
     commands
         // 2d camera
         .spawn(UiCameraComponents::default())
@@ -109,7 +107,7 @@ fn setup_hud_system(
                     },
                     text: Text {
                         value: "FPS:".to_string(),
-                        font: font_handle,
+                        font: font_handle.clone(),
                         style: TextStyle {
                             font_size: 24.0,
                             color: Color::WHITE,
@@ -133,7 +131,7 @@ fn setup_hud_system(
                     },
                     text: Text {
                         value: "Int/s:".to_string(),
-                        font: font_handle,
+                        font: font_handle.clone(),
                         style: TextStyle {
                             font_size: 24.0,
                             color: Color::WHITE,
@@ -174,7 +172,7 @@ fn setup_hud_system(
                         align_self: AlignSelf::FlexStart,
                         ..Default::default()
                     },
-                    material: button_materials.normal,
+                    material: button_materials.normal.clone(),
                     ..Default::default()
                 })
                 .with(button::ToggleButton::new(
@@ -198,7 +196,7 @@ fn setup_hud_system(
                         .spawn(TextComponents {
                             text: Text {
                                 value: "Start".to_string(),
-                                font: asset_server.load("assets/fonts/FiraSans-Bold.ttf").unwrap(),
+                                font: asset_server.load("assets/fonts/FiraSans-Bold.ttf"),
                                 style: TextStyle {
                                     font_size: 40.0,
                                     color: Color::rgb(0.8, 0.8, 0.8),
@@ -216,7 +214,7 @@ fn setup_hud_system(
                         align_self: AlignSelf::FlexStart,
                         ..Default::default()
                     },
-                    material: button_materials.normal,
+                    material: button_materials.normal.clone(),
                     ..Default::default()
                 })
                 .with(button::ToggleButton::new(
@@ -238,7 +236,7 @@ fn setup_hud_system(
                         .spawn(TextComponents {
                             text: Text {
                                 value: "Start".to_string(),
-                                font: asset_server.load("assets/fonts/FiraSans-Bold.ttf").unwrap(),
+                                font: asset_server.load("assets/fonts/FiraSans-Bold.ttf"),
                                 style: TextStyle {
                                     font_size: 40.0,
                                     color: Color::rgb(0.8, 0.8, 0.8),
@@ -256,7 +254,7 @@ fn setup_hud_system(
                         align_self: AlignSelf::FlexStart,
                         ..Default::default()
                     },
-                    material: button_materials.normal,
+                    material: button_materials.normal.clone(),
                     ..Default::default()
                 })
                 .with(button::ToggleButton::new(
@@ -279,7 +277,7 @@ fn setup_hud_system(
                         .spawn(TextComponents {
                             text: Text {
                                 value: "Start".to_string(),
-                                font: asset_server.load("assets/fonts/FiraSans-Bold.ttf").unwrap(),
+                                font: asset_server.load("assets/fonts/FiraSans-Bold.ttf"),
                                 style: TextStyle {
                                     font_size: 40.0,
                                     color: Color::rgb(0.8, 0.8, 0.8),
@@ -297,7 +295,7 @@ fn setup_hud_system(
                         align_self: AlignSelf::FlexStart,
                         ..Default::default()
                     },
-                    material: button_materials.normal,
+                    material: button_materials.normal.clone(),
                     ..Default::default()
                 })
                 .with(button::ToggleButton::new(
@@ -321,7 +319,7 @@ fn setup_hud_system(
                         .spawn(TextComponents {
                             text: Text {
                                 value: "Start".to_string(),
-                                font: asset_server.load("assets/fonts/FiraSans-Bold.ttf").unwrap(),
+                                font: asset_server.load("assets/fonts/FiraSans-Bold.ttf"),
                                 style: TextStyle {
                                     font_size: 40.0,
                                     color: Color::rgb(0.8, 0.8, 0.8),

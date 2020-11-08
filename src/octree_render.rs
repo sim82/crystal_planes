@@ -64,10 +64,11 @@ fn vis_update_system(
                 let (pos, size) = octant.get_geometry(height);
 
                 let cube_size = size.0 as f32 * 0.25 * 0.5;
-                let mesh = *vis_info
-                    .cubes
-                    .entry(size.0)
-                    .or_insert_with(|| meshes.add(Mesh::from(shape::Cube { size: cube_size })));
+                // let mesh = *vis_info
+                //     .cubes
+                //     .entry(size.0)
+                //     .or_insert_with(|| meshes.add(Mesh::from(shape::Cube { size: cube_size })))
+                //     .clone();
 
                 let color = crate::crystal::util::hsv_to_rgb(
                     thread_rng().gen_range(0f32, 360f32),
@@ -79,52 +80,52 @@ fn vis_update_system(
                     ..Default::default()
                 });
 
-                commands
-                    .spawn(PbrComponents {
-                        mesh,
-                        material: cube_material_handle,
-                        transform: Transform::from_translation(
-                            pos.into_vec3() * 0.25 + Vec3::splat(cube_size - 0.125),
-                        ),
-                        draw: Draw {
-                            is_transparent: false,
-                            is_visible: level == octant.scale,
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    })
-                    .with(id);
+                // commands
+                //     .spawn(PbrComponents {
+                //         mesh,
+                //         material: cube_material_handle,
+                //         transform: Transform::from_translation(
+                //             pos.into_vec3() * 0.25 + Vec3::splat(cube_size - 0.125),
+                //         ),
+                //         draw: Draw {
+                //             is_transparent: false,
+                //             is_visible: level == octant.scale,
+                //             ..Default::default()
+                //         },
+                //         ..Default::default()
+                //     })
+                //     .with(id);
 
                 num += 1;
             }
             println!("spawned: {}", num);
             vis_info.spawned = true;
 
-            for (mut draw, _) in &mut quad_query.iter() {
+            for (mut draw, _) in quad_query.iter_mut() {
                 draw.is_visible = false;
             }
         }
         (None, Some(level)) if vis_info.spawned => {
-            for (mut draw, id, _) in &mut query.iter() {
+            for (mut draw, id, _) in query.iter_mut() {
                 draw.is_visible = Some(level) == Some(octants.get(*id).scale);
                 // println!("draw: {}", draw.is_visible);
             }
-            for (mut draw, _) in &mut quad_query.iter() {
+            for (mut draw, _) in quad_query.iter_mut() {
                 draw.is_visible = false;
             }
         }
         (Some(old_level), Some(level)) if old_level != level => {
-            for (mut draw, id, _) in &mut query.iter() {
+            for (mut draw, id, _) in query.iter_mut() {
                 draw.is_visible = Some(level) == Some(octants.get(*id).scale);
                 // println!("draw: {}", draw.is_visible);
             }
         }
         (Some(_), None) => {
-            for (mut draw, _, _) in &mut query.iter() {
+            for (mut draw, _, _) in query.iter_mut() {
                 draw.is_visible = false;
                 // println!("draw: {}", draw.is_visible);
             }
-            for (mut draw, _) in &mut quad_query.iter() {
+            for (mut draw, _) in quad_query.iter_mut() {
                 draw.is_visible = true;
             }
         }
