@@ -3,4 +3,4 @@ Global illumination uses brute-force radiosity energy transfer between planes on
 I wrote the initial version years ago in c++ as an excuse to waste cpu-cycles and do some manual SIMD coding and also did versions for vulkano and amethyst along the way. 
 The bevy experience was the most fun so far, hands down...
 
-![Screenshot](/doc/sceenshot1.png?raw=true "Screenshot")
+![Screenshot](/doc/screenshot1.png?raw=true "Screenshot")
