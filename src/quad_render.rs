@@ -359,7 +359,7 @@ fn apply_frontbuf(
         }
 
         if let Some(ref mut mesh) = mesh_opt {
-            match mesh.attribute(bevy::render::mesh::Mesh::ATTRIBUTE_POSITION) {
+            match mesh.attribute(bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL) {
                 Some(VertexAttributeValues::Float3(vs)) => {
                     let mut vs2 = vs.clone();
                     for i in plane.indices.iter() {
@@ -368,7 +368,7 @@ fn apply_frontbuf(
                         vs2[*i as usize][2] = b;
                     }
                     mesh.set_attribute(
-                        bevy::render::mesh::Mesh::ATTRIBUTE_POSITION,
+                        bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL,
                         bevy::render::mesh::VertexAttributeValues::Float3(vs2),
                     );
                 }

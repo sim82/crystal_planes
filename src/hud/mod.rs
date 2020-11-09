@@ -81,7 +81,7 @@ fn setup_hud_system(
     mut _materials: ResMut<Assets<ColorMaterial>>,
     button_materials: Res<button::ButtonMaterials>,
 ) {
-    let font_handle = asset_server.load("assets/fonts/FiraMono-Medium.ttf");
+    let font_handle = asset_server.load("fonts/FiraMono-Medium.ttf");
     commands
         // 2d camera
         .spawn(UiCameraComponents::default())
@@ -196,7 +196,7 @@ fn setup_hud_system(
                         .spawn(TextComponents {
                             text: Text {
                                 value: "Start".to_string(),
-                                font: asset_server.load("assets/fonts/FiraSans-Bold.ttf"),
+                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                                 style: TextStyle {
                                     font_size: 40.0,
                                     color: Color::rgb(0.8, 0.8, 0.8),
@@ -236,7 +236,7 @@ fn setup_hud_system(
                         .spawn(TextComponents {
                             text: Text {
                                 value: "Start".to_string(),
-                                font: asset_server.load("assets/fonts/FiraSans-Bold.ttf"),
+                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                                 style: TextStyle {
                                     font_size: 40.0,
                                     color: Color::rgb(0.8, 0.8, 0.8),
@@ -277,7 +277,7 @@ fn setup_hud_system(
                         .spawn(TextComponents {
                             text: Text {
                                 value: "Start".to_string(),
-                                font: asset_server.load("assets/fonts/FiraSans-Bold.ttf"),
+                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                                 style: TextStyle {
                                     font_size: 40.0,
                                     color: Color::rgb(0.8, 0.8, 0.8),
@@ -319,7 +319,7 @@ fn setup_hud_system(
                         .spawn(TextComponents {
                             text: Text {
                                 value: "Start".to_string(),
-                                font: asset_server.load("assets/fonts/FiraSans-Bold.ttf"),
+                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                                 style: TextStyle {
                                     font_size: 40.0,
                                     color: Color::rgb(0.8, 0.8, 0.8),
