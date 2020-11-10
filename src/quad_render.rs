@@ -13,7 +13,6 @@ use bevy::{
     },
     type_registry::TypeUuid,
 };
-use rand::{thread_rng, Rng};
 
 // FIXME: this is only defined here because apply_frontbuf directly needs to modify it. Implementation should be moved from main.rs
 #[derive(Default)]
@@ -77,7 +76,7 @@ fn setup(
     mut materials: ResMut<Assets<MyMaterial>>,
     mut render_graph: ResMut<RenderGraph>,
     plane_scene: Res<crystal::PlaneScene>,
-    mut query: Query<(Entity, &rad::Plane)>,
+    query: Query<(Entity, &rad::Plane)>,
 ) {
     // Create a new shader pipeline
     let pipeline_handle = pipelines.add(PipelineDescriptor::default_config(ShaderStages {
@@ -318,7 +317,7 @@ fn apply_frontbuf(
     mut render_status: ResMut<crate::hud::RenderStatus>,
 
     mut rotator_system_state: ResMut<RotatorSystemState>,
-    mut query: Query<(&rad::Plane, &Plane)>,
+    query: Query<(&rad::Plane, &Plane)>,
 ) {
     let mut update = false;
 
@@ -343,8 +342,8 @@ fn apply_frontbuf(
     if !update {
         return;
     }
-    let mut mesh_opt = None;
     let mut mesh_handle = Handle::<Mesh>::default();
+    let mut new_vs = Vec::new();
     for (rad_plane, plane) in &mut query.iter() {
         // read rgb value from rad frontbuffer
         let buf = front_buf.read();
@@ -352,29 +351,41 @@ fn apply_frontbuf(
         let g = buf.g[rad_plane.buf_index];
         let b = buf.b[rad_plane.buf_index];
 
-        // consecutive planes will mostly be located in the same mesh
+        // this branch should be hit only once per mesh because consecutive planes
+        // will normally be located in the same mesh
         if mesh_handle != plane.mesh_handle {
+            // apply updated new_vs to current mesh (if Some)
+            if let Some(mesh) = meshes.get_mut(&mesh_handle) {
+                mesh.set_attribute(
+                    bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL,
+                    VertexAttributeValues::Float3(new_vs),
+                );
+            }
+            // get next mesh and init new_vs
             mesh_handle = plane.mesh_handle.clone();
-            mesh_opt = meshes.get_mut(&plane.mesh_handle);
-        }
-
-        if let Some(ref mut mesh) = mesh_opt {
-            match mesh.attribute(bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL) {
-                Some(VertexAttributeValues::Float3(vs)) => {
-                    let mut vs2 = vs.clone();
-                    for i in plane.indices.iter() {
-                        vs2[*i as usize][0] = r;
-                        vs2[*i as usize][1] = g;
-                        vs2[*i as usize][2] = b;
-                    }
-                    mesh.set_attribute(
-                        bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL,
-                        bevy::render::mesh::VertexAttributeValues::Float3(vs2),
-                    );
-                }
+            new_vs = match meshes
+                .get(&mesh_handle)
+                .expect("missing mesh referenced by plane")
+                .attribute(bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL)
+            {
+                // allocate new_vs using size of existing attribute-array (OPT-REMARK: assuming this is more efficient than cloning it... in-place update would be nice)
+                Some(VertexAttributeValues::Float3(vs)) => vec![[0f32, 0f32, 0f32]; vs.len()],
                 _ => panic!("expected Vertex_Normal to be Float3"),
             };
         }
+
+        for i in plane.indices.iter() {
+            new_vs[*i as usize][0] = r;
+            new_vs[*i as usize][1] = g;
+            new_vs[*i as usize][2] = b;
+        }
+    }
+    // apply final updated new_vs to last mesh_opt (if Some)
+    if let Some(mesh) = meshes.get_mut(&mesh_handle) {
+        mesh.set_attribute(
+            bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL,
+            VertexAttributeValues::Float3(new_vs),
+        );
     }
 }
 

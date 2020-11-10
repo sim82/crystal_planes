@@ -47,7 +47,7 @@ impl ToggleButton {
 }
 
 fn toggle_button_system(world: &mut World, res: &mut Resources) {
-    let mut query = world.query_mut::<(
+    let query = world.query_mut::<(
         &mut ToggleButton,
         &Children,
         Mutated<Interaction>,
@@ -77,7 +77,7 @@ fn toggle_button_system(world: &mut World, res: &mut Resources) {
 
 fn toggle_button_text_system(world: &mut World, res: &mut Resources) {
     let mut set_texts = Vec::new();
-    let mut query = world.query::<(&ToggleButton, &Children)>();
+    let query = world.query::<(&ToggleButton, &Children)>();
 
     for (toggle_button, children) in query {
         let get_label = &*toggle_button.get_label;

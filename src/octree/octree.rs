@@ -127,6 +127,7 @@ pub fn child_offset(i: usize) -> Vec3i {
     }
 }
 
+#[allow(dead_code)]
 pub fn generate_points(octants: &Octants, root: OctantId, offset: &Point3i) -> Vec<Point3i> {
     let octant = octants.get(root);
     let mut out = Vec::new();

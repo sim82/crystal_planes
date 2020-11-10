@@ -47,11 +47,16 @@ fn setup(
         //     continue;
         // }
         let (pos, size) = octant.get_geometry(height);
-        let mesh = *cubes.entry(size.0).or_insert_with(|| {
-            meshes.add(Mesh::from(shape::Cube {
-                size: size.0 as f32 * 0.125 * 0.5,
-            }))
-        });
+        let mesh = cubes
+            .entry(size.0)
+            .or_insert_with(|| {
+                meshes
+                    .add(Mesh::from(shape::Cube {
+                        size: size.0 as f32 * 0.125 * 0.5,
+                    }))
+                    .clone()
+            })
+            .clone();
 
         let color = crystal_planes::crystal::util::hsv_to_rgb(
             thread_rng().gen_range(0f32, 360f32),
@@ -140,10 +145,8 @@ fn camera_order_color_system(
 ) {
     for (_camera, visible_entities) in &mut camera_query.iter() {
         for visible_entity in visible_entities.iter() {
-            if let Ok(material_handle) =
-                material_query.get::<Handle<StandardMaterial>>(visible_entity.entity)
-            {
-                let material = materials.get_mut(&material_handle).unwrap();
+            if let Ok(material_handle) = material_query.get(visible_entity.entity) {
+                let material = materials.get_mut(material_handle).unwrap();
                 let value = 1.0 - (visible_entity.order.0 - 10.0) / 7.0;
                 material.albedo = Color::rgb(value, value, value);
             }

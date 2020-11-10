@@ -64,11 +64,11 @@ fn vis_update_system(
                 let (pos, size) = octant.get_geometry(height);
 
                 let cube_size = size.0 as f32 * 0.25 * 0.5;
-                // let mesh = *vis_info
-                //     .cubes
-                //     .entry(size.0)
-                //     .or_insert_with(|| meshes.add(Mesh::from(shape::Cube { size: cube_size })))
-                //     .clone();
+                let mesh = vis_info
+                    .cubes
+                    .entry(size.0)
+                    .or_insert_with(|| meshes.add(Mesh::from(shape::Cube { size: cube_size })))
+                    .clone();
 
                 let color = crate::crystal::util::hsv_to_rgb(
                     thread_rng().gen_range(0f32, 360f32),
@@ -80,21 +80,21 @@ fn vis_update_system(
                     ..Default::default()
                 });
 
-                // commands
-                //     .spawn(PbrComponents {
-                //         mesh,
-                //         material: cube_material_handle,
-                //         transform: Transform::from_translation(
-                //             pos.into_vec3() * 0.25 + Vec3::splat(cube_size - 0.125),
-                //         ),
-                //         draw: Draw {
-                //             is_transparent: false,
-                //             is_visible: level == octant.scale,
-                //             ..Default::default()
-                //         },
-                //         ..Default::default()
-                //     })
-                //     .with(id);
+                commands
+                    .spawn(PbrComponents {
+                        mesh,
+                        material: cube_material_handle,
+                        transform: Transform::from_translation(
+                            pos.into_vec3() * 0.25 + Vec3::splat(cube_size - 0.125),
+                        ),
+                        draw: Draw {
+                            is_transparent: false,
+                            is_visible: level == octant.scale,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    })
+                    .with(id);
 
                 num += 1;
             }
