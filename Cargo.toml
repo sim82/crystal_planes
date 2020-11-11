@@ -10,6 +10,7 @@ edition = "2018"
 arrayvec = "^0.5"
 bevy = "^0.3"
 bevy_fly_camera={git="https://github.com/sim82/bevy_fly_camera.git", branch="master"}
+building-blocks={git="https://github.com/bonsairobo/building-blocks.git", branch="main", features=["ncollide"]}
 bincode = "*"
 image = "*"
 ndarray="*"
@@ -19,3 +20,6 @@ rodio = "*"
 serde = { version = "1", features = ["derive"] }
 packed_simd_2 = { version = "^0.3" }
 md5 = "^0.7"
+
+[profile.release]
+debug = true
