@@ -7,13 +7,20 @@ use bevy::{
 };
 use building_blocks::{
     core::prelude::*,
-    partition::{Octree, OctreeDBVT},
+    partition::collision::voxel_ray_cast,
+    partition::ncollide3d::{
+        na,
+        query::{Ray, RayCast},
+    },
+    partition::{Octree, OctreeDBVT, OctreeDBVTVisitor, OctreeVisitor},
     prelude::*,
     storage::prelude::*,
 };
 use crystal_planes::crystal;
 
+use image::{png::PngEncoder, ColorType};
 use rand::{thread_rng, Rng};
+use std::fs::File;
 
 #[derive(Clone)]
 struct Voxel(bool);
@@ -21,6 +28,40 @@ struct Voxel(bool);
 impl IsEmpty for Voxel {
     fn is_empty(&self) -> bool {
         !self.0
+    }
+}
+
+struct DebugVisitor;
+impl OctreeVisitor for DebugVisitor {
+    fn visit_octant(
+        &mut self,
+        octant: building_blocks::partition::Octant,
+        is_leaf: bool,
+    ) -> building_blocks::partition::octree::VisitStatus {
+        println!(
+            "visit: {:?} {:?} {}",
+            is_leaf, octant.minimum, octant.edge_length
+        );
+        building_blocks::partition::octree::VisitStatus::Continue
+    }
+}
+
+struct DebugVisitorDbvt;
+impl OctreeDBVTVisitor for DebugVisitorDbvt {
+    fn visit(
+        &mut self,
+        aabb: &building_blocks::partition::ncollide3d::bounding_volume::AABB<f32>,
+        octant: Option<&building_blocks::partition::Octant>,
+        is_leaf: bool,
+    ) -> building_blocks::partition::octree::VisitStatus {
+        match octant {
+            Some(octant) => println!(
+                "visit octant: {:?} {:?} {}",
+                is_leaf, octant.minimum, octant.edge_length
+            ),
+            None => println!("visit None: {:?}", is_leaf),
+        };
+        building_blocks::partition::octree::VisitStatus::Continue
     }
 }
 
@@ -56,7 +97,9 @@ fn main() {
     for p in points.iter() {
         for (ext, arr) in arrays.iter_mut() {
             if ext.contains(p) {
+                // println!("{:?}", p);
                 *arr.get_mut(p) = Voxel(true);
+                // break;
             }
         }
         // *voxels.get_mut(p) = Voxel(true);
@@ -64,11 +107,48 @@ fn main() {
 
     // let octree = Octree::from_array3(&voxels, *voxels.extent());
     let mut bvt = OctreeDBVT::default();
-    let key = 0; // unimportant
+    let mut key = 0; // unimportant
     for (_, arr) in arrays {
-        bvt.insert(key, Octree::from_array3(&arr, *arr.extent()));
+        let octree = Octree::from_array3(&arr, *arr.extent());
+        // println!("insert: {:?} {:?}", arr.extent(), octree.);
+
+        // println!("new octree {:?}", arr.extent());
+        // octree.visit(&mut DebugVisitor);
+        bvt.insert(key, octree);
+        key += 1;
+    }
+    bvt.visit(&mut DebugVisitorDbvt);
+
+    {
+        let start = na::Point3::new(40.0, 40.0, 40.0);
+        let ray = Ray::new(start, na::Point3::new(40.0, 0.0, 40.0) - start);
+        let impact = voxel_ray_cast(&bvt, ray, std::f32::MAX, |_| true);
+        match impact {
+            Some(impact) => println!("impact: {:?}", impact),
+            None => println!("miss"),
+        };
+    }
+    let mut pixels = [0u8; 128 * 128];
+    for y in 0..128 {
+        for x in 0..128 {
+            // let start = na::Point3::new(x as f32, 40.0, y as f32);
+            // let ray = Ray::new(start, na::Point3::new(x as f32, 0.0, y as f32) - start);
+            let start = na::Point3::new(x as f32, y as f32, 128.0);
+            let ray = Ray::new(start, na::Vector3::new(0.0, 0.0, -128.0));
+            // let start = na::Point3::new(x as f32, y as f32, 128.0);
+            // let ray = Ray::new(start, na::Vector3::new(0.0, -128.0, -128.0));
+            let impact = voxel_ray_cast(&bvt, ray, std::f32::MAX, |_| true);
+            match impact {
+                Some(impact) => pixels[x + y * 128] = ((1.0 - impact.impact.toi) * 255.0) as u8,
+                None => (),
+            };
+        }
     }
 
+    let output = File::create("hit.png").unwrap();
+    PngEncoder::new(output)
+        .encode(&pixels, 128, 128, ColorType::L8)
+        .unwrap();
     // bvt.insert(key, octree);
 
     // partition::Octree::from_array3(array, extent)
