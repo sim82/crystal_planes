@@ -1,4 +1,5 @@
 use crate::crystal::math::prelude::*;
+use crate::crystal::util;
 use bevy::prelude::*;
 use serde::Serialize;
 use std::{
@@ -23,6 +24,7 @@ pub trait Bitmap {
     fn step(&self, p: Point3i, dir: &Dir) -> Option<Point3i>;
 
     fn cell_iter(&self) -> ndarray::iter::IndexedIter<'_, bool, ndarray::Ix3>; // FIXME: hide this
+    fn occluded(&self, p0: Vec3i, p1: Vec3i, n0: Option<Vec3i>, n1: Option<Vec3i>) -> bool;
 }
 
 impl Bitmap for BlockMap {
@@ -91,6 +93,12 @@ impl Bitmap for BlockMap {
 
     fn cell_iter(&self) -> ndarray::iter::IndexedIter<'_, bool, ndarray::Ix3> {
         self.indexed_iter()
+    }
+    fn occluded(&self, p0: Vec3i, p1: Vec3i, n0: Option<Vec3i>, n1: Option<Vec3i>) -> bool {
+        match (n0, n1) {
+            (Some(n0), Some(n1)) => util::occluded(p0 + n0, p1 + n1, self),
+            _ => util::occluded(p0, p1, self),
+        }
     }
 }
 

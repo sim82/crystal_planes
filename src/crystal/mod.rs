@@ -23,6 +23,7 @@ pub mod util;
 // use std::iter::Iterator;
 
 // mod buffer;
+pub mod accel;
 pub mod map;
 pub mod math;
 pub mod rad;

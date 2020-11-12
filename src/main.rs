@@ -49,6 +49,7 @@ fn main() {
 
 fn setup(mut commands: Commands) {
     let bm = crystal::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
+    let bm = Box::new(crystal::accel::OctreeBitmap::wrap(bm));
     let mut planes = crystal::PlanesSep::new();
     planes.create_planes(&*bm);
 
