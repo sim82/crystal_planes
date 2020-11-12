@@ -82,7 +82,11 @@ pub fn apply_pointlight(
         let dot = d.dot(plane.dir.get_normal());
 
         let diff_color = diffuse[i];
-        if !super::util::occluded(light_pos_i, trace_pos, &**plane_scene.blockmap) && dot > 0f32 {
+        if !plane_scene
+            .blockmap
+            .occluded(light_pos_i, trace_pos, None, None)
+            && dot > 0f32
+        {
             // println!("light");
             emit[i] = super::util::vec_mul(&diff_color, &color)
                 * dot
