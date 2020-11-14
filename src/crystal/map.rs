@@ -14,25 +14,21 @@ pub type BlockMap = ndarray::Array3<bool>;
 const NUM_PLANE_CORNERS: usize = 4;
 
 pub trait Bitmap {
-    fn set(&mut self, p: Point3i, v: bool);
-
     fn get(&self, p: Point3i) -> bool;
-
-    fn add(&mut self, slice: &MapSlice);
 
     fn print(&self);
     fn step(&self, p: Point3i, dir: &Dir) -> Option<Point3i>;
 
-    fn cell_iter(&self) -> ndarray::iter::IndexedIter<'_, bool, ndarray::Ix3>; // FIXME: hide this
+    fn cell_iter(&self) -> Box<dyn Iterator<Item = ((usize, usize, usize), &bool)> + '_>;
     fn occluded(&self, p0: Vec3i, p1: Vec3i, n0: Option<Vec3i>, n1: Option<Vec3i>) -> bool;
 }
 
-impl Bitmap for BlockMap {
-    fn set(&mut self, p: Point3i, v: bool) {
-        // let c = self.coord(&p);
-        self[[p.0 as usize, p.1 as usize, p.2 as usize]] = v;
-    }
+pub trait BitmapBuilder {
+    fn set(&mut self, p: Point3i, v: bool);
+    fn add(&mut self, slice: &MapSlice);
+}
 
+impl Bitmap for BlockMap {
     fn get(&self, p: Point3i) -> bool {
         let (x, y, z) = self.dim();
         if p.x() < 0
@@ -47,34 +43,6 @@ impl Bitmap for BlockMap {
         // self.bitmap[self.coord(&p)]
         self[[p.x() as usize, p.y() as usize, p.z() as usize]]
     }
-
-    fn add(&mut self, slice: &MapSlice) {
-        let (sx, _, sz) = self.dim();
-
-        //let Vec2i { x: w, y: h } = slice.size();
-        let size = slice.size();
-        let w = size.x();
-        let h = size.y();
-        assert!(w >= sx as i32);
-        assert!(h >= sz as i32);
-
-        for ((x, y, z), v) in self.indexed_iter_mut() {
-            *v = slice.get(Point2i::new(x as i32, z as i32)) >= y as i32;
-        }
-    }
-
-    fn print(&self) {
-        for xz_slice in self.axis_iter(ndarray::Axis(1)) {
-            for x_slice in xz_slice.axis_iter(ndarray::Axis(0)) {
-                for x in x_slice.iter() {
-                    print!("{}", if *x { 1 } else { 0 });
-                }
-                println!();
-            }
-            println!("===================================");
-        }
-    }
-
     fn step(&self, p: Point3i, dir: &Dir) -> Option<Point3i> {
         let (x, y, z) = self.dim();
         let pnew = p + dir.get_normal_i();
@@ -90,14 +58,47 @@ impl Bitmap for BlockMap {
             Some(pnew)
         }
     }
+    fn print(&self) {
+        for xz_slice in self.axis_iter(ndarray::Axis(1)) {
+            for x_slice in xz_slice.axis_iter(ndarray::Axis(0)) {
+                for x in x_slice.iter() {
+                    print!("{}", if *x { 1 } else { 0 });
+                }
+                println!();
+            }
+            println!("===================================");
+        }
+    }
 
-    fn cell_iter(&self) -> ndarray::iter::IndexedIter<'_, bool, ndarray::Ix3> {
-        self.indexed_iter()
+    fn cell_iter(&self) -> Box<dyn Iterator<Item = ((usize, usize, usize), &bool)> + '_> {
+        Box::new(self.indexed_iter())
     }
     fn occluded(&self, p0: Vec3i, p1: Vec3i, n0: Option<Vec3i>, n1: Option<Vec3i>) -> bool {
         match (n0, n1) {
             (Some(n0), Some(n1)) => util::occluded(p0 + n0, p1 + n1, self),
             _ => util::occluded(p0, p1, self),
+        }
+    }
+}
+
+impl BitmapBuilder for BlockMap {
+    fn set(&mut self, p: Point3i, v: bool) {
+        // let c = self.coord(&p);
+        self[[p.0 as usize, p.1 as usize, p.2 as usize]] = v;
+    }
+
+    fn add(&mut self, slice: &MapSlice) {
+        let (sx, _, sz) = self.dim();
+
+        //let Vec2i { x: w, y: h } = slice.size();
+        let size = slice.size();
+        let w = size.x();
+        let h = size.y();
+        assert!(w >= sx as i32);
+        assert!(h >= sz as i32);
+
+        for ((x, y, z), v) in self.indexed_iter_mut() {
+            *v = slice.get(Point2i::new(x as i32, z as i32)) >= y as i32;
         }
     }
 }
