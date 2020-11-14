@@ -1,8 +1,9 @@
 use std::time::Instant;
 
-use crystal_planes::crystal::{self, math::prelude::*};
+use crystal_planes::map;
+use crystal_planes::math::prelude::*;
 
-fn bench(bm: &dyn crystal::Bitmap) {
+fn bench(bm: &dyn map::Bitmap) {
     let t0 = Instant::now();
     let start = Point3i::new(40, 180, 40);
     let mut count = 0;
@@ -25,7 +26,7 @@ fn bench(bm: &dyn crystal::Bitmap) {
 }
 
 fn main() {
-    let bm = crystal::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
+    let bm = map::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
     bench(&*bm);
     // let bm = Box::new(crystal::accel::OctreeBitmap::wrap(bm));
     //bench(&*bm);

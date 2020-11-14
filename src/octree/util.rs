@@ -1,5 +1,5 @@
-use crate::crystal;
-use crate::crystal::math::prelude::*;
+use crate::map;
+use crate::math::prelude::*;
 
 use super::octree;
 
@@ -9,7 +9,7 @@ pub trait OctreeLoad {
 
 impl OctreeLoad for super::octree::Octants {
     fn load_map(&mut self, filename: &str) -> Option<octree::OctantId> {
-        let bm = crystal::read_map(filename).ok()?;
+        let bm = map::read_map(filename).ok()?;
 
         let points: Vec<Point3i> = bm
             .cell_iter()

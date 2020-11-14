@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::crystal::math::prelude::*;
+use crate::math::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub struct OctantId(u32);

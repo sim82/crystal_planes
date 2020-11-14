@@ -1,11 +1,11 @@
 use std::time::Instant;
 
-use crystal_planes::crystal;
-use crystal_planes::crystal::math::*;
+use crystal_planes::map;
+use crystal_planes::math::prelude::*;
 use crystal_planes::octree;
 
 fn main() {
-    let bm = crystal::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
+    let bm = map::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
 
     let points: Vec<Point3i> = bm
         .cell_iter()

@@ -10,12 +10,14 @@ use bevy::{
     diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, render::mesh::shape, winit::WinitConfig,
 };
 use rand::{thread_rng, Rng};
-mod crystal;
 mod hud;
+mod map;
+mod math;
 mod octree;
 mod octree_render;
 mod quad_render;
 mod rad;
+mod util;
 
 /// This example illustrates how to create a custom material asset and a shader that uses that material
 fn main() {
@@ -48,14 +50,14 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    let bm = crystal::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
-    let mut planes = crystal::PlanesSep::new();
+    let bm = map::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
+    let mut planes = map::PlanesSep::new();
     planes.create_planes(&*bm);
 
     let num_planes = planes.num_planes();
 
     let (render_to_rad_send, render_to_rad_recv) = mpsc::channel();
-    let plane_scene = crystal::PlaneScene::new(planes, bm);
+    let plane_scene = map::PlaneScene::new(planes, bm);
     let (front_buf, rad_to_render_recv) =
         rad::worker::spawn_rad_update(plane_scene.clone(), render_to_rad_recv);
 
@@ -68,9 +70,7 @@ fn setup(mut commands: Commands) {
         .spawn((PointLight::default(),));
 
     for i in 0..num_planes {
-        commands.spawn(rad::worker::PlaneBundle {
-            plane: rad::worker::Plane { buf_index: i },
-        });
+        commands.spawn((rad::PlaneIndex { buf_index: i },));
     }
 }
 
@@ -247,7 +247,7 @@ impl Default for DemoSystemState {
 }
 
 fn rand_color(min: f32, max: f32) -> Vec3 {
-    crystal::util::hsv_to_rgb(thread_rng().gen_range(min, max), 1f32, 1f32)
+    util::hsv_to_rgb(thread_rng().gen_range(min, max), 1f32, 1f32)
 }
 
 fn demo_system(

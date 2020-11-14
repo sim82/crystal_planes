@@ -5,3 +5,7 @@ pub mod worker;
 // pub use ffs::*;
 // pub use simd::*;
 // pub use worker::*;
+
+pub struct PlaneIndex {
+    pub buf_index: usize,
+}

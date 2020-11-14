@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crystal_planes::crystal::math::prelude::*;
+use crystal_planes::math::prelude::*;
 use crystal_planes::octree;
 use crystal_planes::octree_render;
 fn main() {

@@ -1,6 +1,6 @@
 use std::sync::{mpsc::Receiver, Mutex};
 
-use crate::crystal::{self};
+use crate::map;
 use crate::rad;
 use bevy::{
     diagnostic::{Diagnostic, DiagnosticId, Diagnostics},
@@ -77,8 +77,8 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<MyMaterial>>,
     mut render_graph: ResMut<RenderGraph>,
-    plane_scene: Res<crystal::PlaneScene>,
-    query: Query<(Entity, &rad::worker::Plane)>,
+    plane_scene: Res<map::PlaneScene>,
+    query: Query<(Entity, &rad::PlaneIndex)>,
 ) {
     // Create a new shader pipeline
     let pipeline_handle = pipelines.add(PipelineDescriptor::default_config(ShaderStages {
@@ -137,27 +137,27 @@ fn setup(
     for p in plane_scene.planes.planes_iter() {
         let point = &p.cell;
         let plane_trans = match p.dir {
-            crystal::Dir::XyPos => Mat4::from_cols_array(&[
+            map::Dir::XyPos => Mat4::from_cols_array(&[
                 0.125, 0.0, 0.0, 0.0, 0.0, 0.125, 0.0, 0.0, 0.0, 0.0, 0.125, 0.0, 0.0, 0.0, 0.125,
                 1.0,
             ]),
-            crystal::Dir::XyNeg => Mat4::from_cols_array(&[
+            map::Dir::XyNeg => Mat4::from_cols_array(&[
                 -0.125, 0.0, 0.0, 0.0, 0.0, 0.125, 0.0, 0.0, 0.0, 0.0, -0.125, 0.0, 0.0, 0.0,
                 -0.125, 1.0,
             ]),
-            crystal::Dir::YzPos => Mat4::from_cols_array(&[
+            map::Dir::YzPos => Mat4::from_cols_array(&[
                 0.0, 0.0, -0.125, 0.0, 0.0, 0.125, 0.0, 0.0, 0.125, 0.0, 0.0, 0.0, 0.125, 0.0, 0.0,
                 1.0,
             ]),
-            crystal::Dir::YzNeg => Mat4::from_cols_array(&[
+            map::Dir::YzNeg => Mat4::from_cols_array(&[
                 0.0, -0.0, 0.125, 0.0, 0.0, 0.125, 0.0, 0.0, -0.125, 0.0, 0.0, 0.0, -0.125, 0.0,
                 0.0, 1.0,
             ]),
-            crystal::Dir::ZxPos => Mat4::from_cols_array(&[
+            map::Dir::ZxPos => Mat4::from_cols_array(&[
                 -0.125, 0.0, 0.0, 0.0, 0.0, 0.0, 0.125, 0.0, 0.0, 0.125, 0.0, 0.0, 0.0, 0.125, 0.0,
                 1.0,
             ]),
-            crystal::Dir::ZxNeg => Mat4::from_cols_array(&[
+            map::Dir::ZxNeg => Mat4::from_cols_array(&[
                 -0.125, -0.0, 0.0, 0.0, 0.0, 0.0, -0.125, 0.0, 0.0, -0.125, 0.0, 0.0, 0.0, -0.125,
                 0.0, 1.0,
             ]),
@@ -319,7 +319,7 @@ fn apply_frontbuf(
     mut render_status: ResMut<crate::hud::RenderStatus>,
 
     mut rotator_system_state: ResMut<RotatorSystemState>,
-    query: Query<(&rad::worker::Plane, &Plane)>,
+    query: Query<(&rad::PlaneIndex, &Plane)>,
 ) {
     let mut update = false;
 

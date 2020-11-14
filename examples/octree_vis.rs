@@ -58,11 +58,8 @@ fn setup(
             })
             .clone();
 
-        let color = crystal_planes::crystal::util::hsv_to_rgb(
-            thread_rng().gen_range(0f32, 360f32),
-            1f32,
-            1f32,
-        );
+        let color =
+            crystal_planes::util::hsv_to_rgb(thread_rng().gen_range(0f32, 360f32), 1f32, 1f32);
         let cube_material_handle = materials.add(StandardMaterial {
             albedo: Color::rgba(color.x(), color.y(), color.z(), 1.0),
             ..Default::default()

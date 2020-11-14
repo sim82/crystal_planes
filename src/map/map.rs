@@ -1,5 +1,5 @@
-use crate::crystal::math::prelude::*;
-use crate::crystal::util;
+use crate::math::prelude::*;
+use crate::util;
 use bevy::prelude::*;
 use serde::Serialize;
 use std::{

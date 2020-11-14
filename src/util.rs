@@ -1,6 +1,6 @@
 // use super::{Bitmap, Point3i};
-use crate::crystal::map::Bitmap;
-use crate::crystal::math::prelude::*;
+use crate::map::Bitmap;
+use crate::math::prelude::*;
 use bevy::math::prelude::*;
 
 pub fn occluded(p0: Point3i, p1: Point3i, solid: &dyn Bitmap) -> bool {

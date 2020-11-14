@@ -1,10 +1,11 @@
+use crate::map::{self, PlaneScene};
+use crate::math::prelude::*;
+use crate::util::vec_mul;
+use bevy::prelude::*;
 use std::sync::{
     mpsc::Receiver, mpsc::SendError, mpsc::Sender, Arc, Mutex, RwLock, RwLockReadGuard,
     RwLockWriteGuard,
 };
-
-use crate::crystal::{self, math::prelude::*, util::vec_mul, PlaneScene};
-use bevy::prelude::*;
 
 use super::{ffs, simd};
 use rayon::prelude::*;
@@ -39,14 +40,6 @@ impl FrontBuf {
     pub fn write(&self) -> RwLockWriteGuard<RadBuffer> {
         self.0.write().unwrap()
     }
-}
-
-#[derive(Bundle)]
-pub struct PlaneBundle {
-    pub plane: Plane,
-}
-pub struct Plane {
-    pub buf_index: usize,
 }
 
 pub enum RenderToRad {
@@ -141,9 +134,9 @@ impl RadData {
                 continue;
             }
             diffuse[i] = match plane.dir {
-                crystal::Dir::XyPos => color1,
-                crystal::Dir::XyNeg => color2,
-                crystal::Dir::YzPos | crystal::Dir::YzNeg => Vec3::new(0.8f32, 0.8f32, 0.8f32),
+                map::Dir::XyPos => color1,
+                map::Dir::XyNeg => color2,
+                map::Dir::YzPos | map::Dir::YzNeg => Vec3::new(0.8f32, 0.8f32, 0.8f32),
                 _ => Vec3::new(1f32, 1f32, 1f32),
                 // let color = hsv_to_rgb(rng.gen_range(0.0, 360.0), 1.0, 1.0); //random::<f32>(), 1.0, 1.0);
                 // scene.diffuse[i] = Vector3::new(color.0, color.1, color.2);
@@ -316,9 +309,9 @@ impl RadThread for RadData {
                                     continue;
                                 }
                                 self.diffuse[i] = match plane.dir {
-                                    crystal::Dir::XyPos => color1,
-                                    crystal::Dir::XyNeg => color2,
-                                    crystal::Dir::YzPos | crystal::Dir::YzNeg => {
+                                    map::Dir::XyPos => color1,
+                                    map::Dir::XyNeg => color2,
+                                    map::Dir::YzPos | map::Dir::YzNeg => {
                                         Vec3::new(0.8f32, 0.8f32, 0.8f32)
                                     }
                                     _ => Vec3::new(1f32, 1f32, 1f32),
