@@ -11,7 +11,7 @@ use building_blocks::{
     storage::prelude::*,
 };
 
-use super::Bitmap;
+use super::{math::Vec3i, Bitmap};
 pub struct OctreeBitmap {
     bitmap: Box<dyn Bitmap + Sync + Send>,
     octree: OctreeDBVT<i32>,
@@ -110,13 +110,7 @@ impl Bitmap for OctreeBitmap {
         self.bitmap.cell_iter()
     }
 
-    fn occluded(
-        &self,
-        p0: super::math::Vec3i,
-        p1: super::math::Vec3i,
-        n0: Option<super::math::Vec3i>,
-        n1: Option<super::math::Vec3i>,
-    ) -> bool {
+    fn occluded(&self, p0: Vec3i, p1: Vec3i, n0: Option<Vec3i>, n1: Option<Vec3i>) -> bool {
         let p0 = match n0 {
             Some(n0) => p0.into_vec3() + n0.into_vec3(),
             _ => p0.into_vec3(),
