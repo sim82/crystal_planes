@@ -33,7 +33,7 @@ fn setup(
         .expect("failed to load octree from map");
 
     let height = octants.get(root).scale;
-    let max_level = (height + 1) as i32;
+    let _max_level = (height + 1) as i32;
     // let cube_meshes = (0..max_level).map(|level| {
     //     meshes.add(Mesh::from(shape::Cube {
     //         size: (2.0f32.powi(level)) as f32,

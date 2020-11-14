@@ -114,7 +114,7 @@ pub fn generate_formfactors(
                 let dist_cull = ff < 5e-6;
 
                 if !dist_cull
-                    && !bitmap.occluded(plane1.cell, plane2.cell, Some(norm1), Some(norm2))
+                    && !bitmap.occluded(plane1.cell, plane2.cell, Some(norm1), Some(norm2), false)
                 {
                     tmp.push((i as u32, j as u32, ff));
                     tmp.push((j as u32, i as u32, ff));

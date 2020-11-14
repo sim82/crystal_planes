@@ -14,10 +14,11 @@ fn bench(bm: &dyn map::Bitmap) {
             continue;
         }
         if bm.occluded(
-            start,
             Point3i::new(x as i32, y as i32, z as i32),
+            start,
             None,
             None,
+            true,
         ) {
             count += 1;
         }

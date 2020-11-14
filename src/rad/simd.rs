@@ -2,13 +2,13 @@ use super::ffs;
 use bevy::math::prelude::*;
 use packed_simd_2::{f32x16, f32x4, f32x8};
 pub struct ExtentsSimd {
-    single: Vec<(u32, f32)>,
+    pub single: Vec<(u32, f32)>,
     vec4_ff: Vec<f32x4>,
     vec8_ff: Vec<f32x8>,
     vec16_ff: Vec<f32x16>,
-    vec4: Vec<u32>,
-    vec8: Vec<u32>,
-    vec16: Vec<u32>,
+    pub vec4: Vec<u32>,
+    pub vec8: Vec<u32>,
+    pub vec16: Vec<u32>,
 }
 
 // struct RadSlice<'a>(&'a [f32], &'a [f32], &'a [f32]);

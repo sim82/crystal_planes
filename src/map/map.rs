@@ -20,7 +20,14 @@ pub trait Bitmap {
     fn step(&self, p: Point3i, dir: &Dir) -> Option<Point3i>;
 
     fn cell_iter(&self) -> Box<dyn Iterator<Item = ((usize, usize, usize), &bool)> + '_>;
-    fn occluded(&self, p0: Vec3i, p1: Vec3i, n0: Option<Vec3i>, n1: Option<Vec3i>) -> bool;
+    fn occluded(
+        &self,
+        p0: Vec3i,
+        p1: Vec3i,
+        n0: Option<Vec3i>,
+        n1: Option<Vec3i>,
+        from_inside: bool,
+    ) -> bool;
 }
 
 pub trait BitmapBuilder {
@@ -73,10 +80,29 @@ impl Bitmap for BlockMap {
     fn cell_iter(&self) -> Box<dyn Iterator<Item = ((usize, usize, usize), &bool)> + '_> {
         Box::new(self.indexed_iter())
     }
-    fn occluded(&self, p0: Vec3i, p1: Vec3i, n0: Option<Vec3i>, n1: Option<Vec3i>) -> bool {
-        match (n0, n1) {
-            (Some(n0), Some(n1)) => util::occluded(p0 + n0, p1 + n1, self),
-            _ => util::occluded(p0, p1, self),
+    fn occluded(
+        &self,
+        p0: Vec3i,
+        p1: Vec3i,
+        n0: Option<Vec3i>,
+        n1: Option<Vec3i>,
+        from_inside: bool,
+    ) -> bool {
+        if from_inside {
+            let min = Vec3i::zero();
+            let dim = self.dim();
+            let max = Vec3i::new(dim.0 as i32, dim.1 as i32, dim.2 as i32);
+            match (n0, n1) {
+                (Some(n0), Some(n1)) => {
+                    util::occluded_from_inside(p0 + n0, p1 + n1, self, min, max)
+                }
+                _ => util::occluded_from_inside(p0, p1, self, min, max),
+            }
+        } else {
+            match (n0, n1) {
+                (Some(n0), Some(n1)) => util::occluded(p0 + n0, p1 + n1, self),
+                _ => util::occluded(p0, p1, self),
+            }
         }
     }
 }

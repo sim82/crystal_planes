@@ -27,6 +27,7 @@ impl Default for RenderStatus {
 pub enum HudSrc {
     Diagnostics(String, DiagnosticId, bool),
     RenderStatus,
+    LoadingScreen,
 }
 fn mag_to_str(mag: i32) -> &'static str {
     match mag {
@@ -64,6 +65,7 @@ fn update_hud_system(
                 }
             }
             HudSrc::RenderStatus => (text.value = format!("render status: {}", render_status.text)),
+            HudSrc::LoadingScreen => (),
         }
 
         // if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
@@ -155,7 +157,7 @@ fn setup_hud_system(
                     },
                     text: Text {
                         value: "Int/s:".to_string(),
-                        font: font_handle,
+                        font: font_handle.clone(),
                         style: TextStyle {
                             font_size: 24.0,
                             color: Color::WHITE,
@@ -330,6 +332,20 @@ fn setup_hud_system(
                         .with(RotateButtonText);
                 });
         });
+    // .spawn(TextComponents {
+    //     style: Style {
+    //         ..Default::default()
+    //     },
+    //     text: Text {
+    //         value: "Dividing Light from Darkness...\nplease stand by".to_string(),
+    //         font: font_handle.clone(),
+    //         style: TextStyle {
+    //             font_size: 48.0,
+    //             color: Color::WHITE,
+    //         },
+    //     },
+    //     ..Default::default()
+    // });
 }
 
 #[derive(Default)]

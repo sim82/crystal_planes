@@ -75,9 +75,10 @@ pub fn apply_pointlight(
         let dot = d.dot(plane.dir.get_normal());
 
         let diff_color = diffuse[i];
+        // OPT-NOTE: tracing from plane to light has better change of early hit an allows for early termination if ray leaves map volume
         if !plane_scene
             .blockmap
-            .occluded(light_pos_i, trace_pos, None, None)
+            .occluded(trace_pos, light_pos_i, None, None, true)
             && dot > 0f32
         {
             // println!("light");
@@ -284,10 +285,29 @@ impl RadThread for RadData {
 
                     let extens = self.extents.as_ref().unwrap();
                     let mut extents_simd = Vec::new();
+                    let mut num16 = 0;
+                    let mut num8 = 0;
+                    let mut num4 = 0;
+                    let mut num_single = 0;
                     for ext in &extens.0 {
                         let ext_simd = simd::ExtentsSimd::from_extents(&ext);
+                        num16 += ext_simd.vec16.len();
+                        num8 += ext_simd.vec8.len();
+                        num4 += ext_simd.vec4.len();
+                        num_single += ext_simd.single.len();
                         extents_simd.push(ext_simd);
                     }
+                    println!(
+                        "extents:\n16 * {} = {}\n8 * {} = {}\n4 * {} = {}\n1 * {}",
+                        num16,
+                        num16 * 16,
+                        num8,
+                        num8 * 8,
+                        num4,
+                        num4 * 4,
+                        num_single
+                    );
+
                     self.extents_simd = Some(extents_simd);
                     self.rad_to_render_channel
                         .send(RadToRender::RadReady)
@@ -326,6 +346,7 @@ impl RadThread for RadData {
                 }
                 for id in light_updates.iter() {
                     if let Some((pos, color)) = self.point_lights.get(id) {
+                        let pt = crate::util::ProfTimer::new("apply_pointlight");
                         apply_pointlight(
                             &mut self.emit,
                             &self.diffuse,
