@@ -15,7 +15,7 @@ mod hud;
 mod octree;
 mod octree_render;
 mod quad_render;
-use crystal::rad;
+mod rad;
 
 /// This example illustrates how to create a custom material asset and a shader that uses that material
 fn main() {
@@ -57,7 +57,7 @@ fn setup(mut commands: Commands) {
     let (render_to_rad_send, render_to_rad_recv) = mpsc::channel();
     let plane_scene = crystal::PlaneScene::new(planes, bm);
     let (front_buf, rad_to_render_recv) =
-        rad::spawn_rad_update(plane_scene.clone(), render_to_rad_recv);
+        rad::worker::spawn_rad_update(plane_scene.clone(), render_to_rad_recv);
 
     commands
         .insert_resource(plane_scene)
@@ -68,8 +68,8 @@ fn setup(mut commands: Commands) {
         .spawn((PointLight::default(),));
 
     for i in 0..num_planes {
-        commands.spawn(rad::PlaneBundle {
-            plane: rad::Plane { buf_index: i },
+        commands.spawn(rad::worker::PlaneBundle {
+            plane: rad::worker::Plane { buf_index: i },
         });
     }
 }
@@ -170,7 +170,7 @@ impl Default for PointLight {
 
 fn _light_move_system(
     keyboard_input: Res<Input<KeyCode>>,
-    rad_update_channel: Res<Mutex<Sender<rad::RenderToRad>>>,
+    rad_update_channel: Res<Mutex<Sender<rad::worker::RenderToRad>>>,
     mut point_light: Mut<PointLight>,
 ) {
     let mut m = Vec3::zero();
@@ -192,7 +192,7 @@ fn _light_move_system(
         rad_update_channel
             .lock()
             .unwrap()
-            .send(rad::RenderToRad::PointLight(
+            .send(rad::worker::RenderToRad::PointLight(
                 0,
                 point_light.pos,
                 point_light.color,
@@ -209,7 +209,7 @@ struct LightUpdateState {
 
 fn light_update_system(
     mut state: ResMut<LightUpdateState>,
-    rad_update_channel: Res<Mutex<Sender<rad::RenderToRad>>>,
+    rad_update_channel: Res<Mutex<Sender<rad::worker::RenderToRad>>>,
     rad_light: &RadPointLight,
     transform: &GlobalTransform,
     // Mutated<GlobalTransform>)>,
@@ -228,7 +228,11 @@ fn light_update_system(
     rad_update_channel
         .lock()
         .unwrap()
-        .send(rad::RenderToRad::PointLight(0, pos, rad_light.color))
+        .send(rad::worker::RenderToRad::PointLight(
+            0,
+            pos,
+            rad_light.color,
+        ))
         .unwrap();
 }
 
@@ -249,14 +253,14 @@ fn rand_color(min: f32, max: f32) -> Vec3 {
 fn demo_system(
     mut state: ResMut<DemoSystemState>,
     time: Res<Time>,
-    rad_update_channel: Res<Mutex<Sender<rad::RenderToRad>>>,
+    rad_update_channel: Res<Mutex<Sender<rad::worker::RenderToRad>>>,
 ) {
     state.cycle_timer.tick(time.delta_seconds);
     if state.cycle && state.cycle_timer.just_finished {
         rad_update_channel
             .lock()
             .unwrap()
-            .send(rad::RenderToRad::SetStripeColors(
+            .send(rad::worker::RenderToRad::SetStripeColors(
                 rand_color(0f32, 180f32),
                 rand_color(180f32, 360f32),
             ))

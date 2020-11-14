@@ -1,7 +1,7 @@
 use crate::crystal::util;
 use bevy::math::prelude::*;
 
-use super::{Bitmap, Dir, Plane, PlanesSep};
+use crate::crystal::{Bitmap, Dir, Plane, PlanesSep};
 use image::ImageBuffer;
 use std::{
     cmp::Ordering,

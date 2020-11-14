@@ -1,6 +1,7 @@
 use std::sync::{mpsc::Receiver, Mutex};
 
-use crate::crystal::{self, rad};
+use crate::crystal::{self};
+use crate::rad;
 use bevy::{
     diagnostic::{Diagnostic, DiagnosticId, Diagnostics},
     prelude::*,
@@ -57,6 +58,7 @@ void main() {
     //o_Target = color;
 }
 "#;
+
 #[derive(Bundle)]
 struct PlaneComponents {
     plane: Plane,
@@ -76,7 +78,7 @@ fn setup(
     mut materials: ResMut<Assets<MyMaterial>>,
     mut render_graph: ResMut<RenderGraph>,
     plane_scene: Res<crystal::PlaneScene>,
-    query: Query<(Entity, &rad::Plane)>,
+    query: Query<(Entity, &rad::worker::Plane)>,
 ) {
     // Create a new shader pipeline
     let pipeline_handle = pipelines.add(PipelineDescriptor::default_config(ShaderStages {
@@ -310,29 +312,29 @@ fn setup(
 // }
 
 fn apply_frontbuf(
-    front_buf: Res<rad::FrontBuf>,
+    front_buf: Res<rad::worker::FrontBuf>,
     mut meshes: ResMut<Assets<Mesh>>,
-    rad_to_render: Res<Mutex<Receiver<rad::RadToRender>>>,
+    rad_to_render: Res<Mutex<Receiver<rad::worker::RadToRender>>>,
     mut diagnostics: ResMut<Diagnostics>,
     mut render_status: ResMut<crate::hud::RenderStatus>,
 
     mut rotator_system_state: ResMut<RotatorSystemState>,
-    query: Query<(&rad::Plane, &Plane)>,
+    query: Query<(&rad::worker::Plane, &Plane)>,
 ) {
     let mut update = false;
 
     // FIXME: move general RadToRender message processing somewhere else
     for cmd in rad_to_render.lock().unwrap().try_iter() {
         match cmd {
-            rad::RadToRender::IterationDone { num_int, duration } => {
+            rad::worker::RadToRender::IterationDone { num_int, duration } => {
                 diagnostics
                     .add_measurement(RAD_INT_PER_SECOND, num_int as f64 / duration.as_secs_f64());
                 update = true;
             }
-            rad::RadToRender::StatusUpdate(text) => {
+            rad::worker::RadToRender::StatusUpdate(text) => {
                 render_status.text = text;
             }
-            rad::RadToRender::RadReady => {
+            rad::worker::RadToRender::RadReady => {
                 render_status.text = "ready".into();
                 rotator_system_state.run = true;
             }
