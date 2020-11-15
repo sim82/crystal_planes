@@ -19,7 +19,7 @@ pub trait Bitmap {
     fn print(&self);
     fn step(&self, p: Point3i, dir: &Dir) -> Option<Point3i>;
 
-    fn cell_iter(&self) -> Box<dyn Iterator<Item = ((usize, usize, usize), &bool)> + '_>;
+    fn cell_iter(&self) -> Box<dyn Iterator<Item = ((usize, usize, usize), bool)> + '_>;
     fn occluded(
         &self,
         p0: Vec3i,
@@ -77,8 +77,8 @@ impl Bitmap for BlockMap {
         }
     }
 
-    fn cell_iter(&self) -> Box<dyn Iterator<Item = ((usize, usize, usize), &bool)> + '_> {
-        Box::new(self.indexed_iter())
+    fn cell_iter(&self) -> Box<dyn Iterator<Item = ((usize, usize, usize), bool)> + '_> {
+        Box::new(self.indexed_iter().map(|(p, v)| (p, *v)))
     }
     fn occluded(
         &self,

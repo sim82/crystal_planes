@@ -51,6 +51,7 @@ fn main() {
 
 fn setup(mut commands: Commands) {
     let bm = map::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
+    let bm = Box::new(map::DenseBlockmap::from_bitmap(&*bm));
     let mut planes = map::PlanesSep::new();
     planes.create_planes(&*bm);
 

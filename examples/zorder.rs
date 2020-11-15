@@ -10,7 +10,7 @@ fn main() {
     let points: Vec<Point3i> = bm
         .cell_iter()
         .filter_map(|((x, y, z), v)| {
-            if *v {
+            if v {
                 Some(Point3i::new(x as i32, y as i32, z as i32))
             } else {
                 None
