@@ -3,7 +3,8 @@ use crate::map::Bitmap;
 use crate::math::prelude::*;
 use bevy::math::prelude::*;
 
-pub fn occluded(p0: Point3i, p1: Point3i, solid: &dyn Bitmap) -> bool {
+// OPT-REMARK: generic purely for performance reasons (yields around ~30% overall improvement)
+pub fn occluded<B: Bitmap>(p0: Point3i, p1: Point3i, solid: &B) -> bool {
     // 3d bresenham, ripped from http://www.cobrabytes.com/index.php?topic=1150.0
 
     // println!("{} {}", DisplayWrap::from(p0), DisplayWrap::from(p1));
@@ -93,10 +94,11 @@ pub fn occluded(p0: Point3i, p1: Point3i, solid: &dyn Bitmap) -> bool {
     false
 }
 
-pub fn occluded_from_inside(
+// OPT-REMARK: generic purely for performance reasons (yields around ~30% overall improvement)
+pub fn occluded_from_inside<B: Bitmap>(
     p0: Point3i,
     p1: Point3i,
-    solid: &dyn Bitmap,
+    solid: &B,
     min: Vec3i,
     max: Vec3i,
 ) -> bool {

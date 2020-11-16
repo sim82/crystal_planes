@@ -45,7 +45,7 @@ impl<'a> Iterator for Iter<'a> {
 
         let ret = Some((
             (self.ix, self.iy, self.iz),
-            self.bm.get(self.ix, self.iy, self.iz),
+            self.bm.get(self.ix, self.iy, self.iz)?,
         ));
 
         self.ix += 1;
@@ -104,53 +104,95 @@ impl DenseBlockmap {
         out
     }
 
-    fn block_address(&self, x: usize, y: usize, z: usize) -> (usize, u64) {
-        assert!(x < self.x && y < self.y && z < self.z);
+    fn block_address(&self, x: usize, y: usize, z: usize) -> Option<(usize, u64)> {
+        let x = x / 4;
+        let y = y / 4;
+        let z = z / 4;
+        let block = x + y * self.xi + z * self.xi * self.yi;
+        if block >= self.blocks.len() {
+            return None;
+        }
         let xm = x % 4;
         let ym = y % 4;
         let zm = z % 4;
 
-        let x = x / 4;
-        let y = y / 4;
-        let z = z / 4;
-
-        (
-            x + y * self.xi + z * self.xi * self.yi,
-            //self.masks[xm + ym * 4 + zm * 4 * 4],
+        // const ZI: [u64; 4] = [0x1, 0x00001, 0x000000001, 0x0000000000001]; // might help on cpus with slow shift (if such a thing still exists...)
+        Some((
+            block,
             0b1 << (xm + ym * 4 + zm * 4 * 4),
-        )
+            // ZI[zm] << (xm + ym * 4),
+        ))
     }
-    pub fn get(&self, x: usize, y: usize, z: usize) -> bool {
-        let (block, mask) = self.block_address(x, y, z);
-        unsafe { self.blocks.get_unchecked(block) & mask != 0 }
+    // pub fn get(&self, x: usize, y: usize, z: usize) -> bool {
+    //     match self.block_address(x, y, z) {
+    //         None => false,
+    //         Some((block, mask)) => unsafe {
+    //             // SAFE because bounds check is done in block_address
+    //             self.blocks.get_unchecked(block) & mask != 0
+    //         },
+    //     }
+    // }
+    pub fn get(&self, x: usize, y: usize, z: usize) -> Option<bool> {
+        match self.block_address(x, y, z) {
+            None => None,
+            Some((block, mask)) => Some(unsafe {
+                // SAFE because bounds check is done in block_address
+                self.blocks.get_unchecked(block) & mask != 0
+            }),
+        }
     }
     pub fn set(&mut self, x: usize, y: usize, z: usize, v: bool) {
-        let (block, mask) = self.block_address(x, y, z);
-        if v {
-            self.blocks[block] |= mask
-        } else {
-            self.blocks[block] &= !mask
+        match self.block_address(x, y, z) {
+            None => (),
+            Some((block, mask)) => {
+                if v {
+                    self.blocks[block] |= mask
+                } else {
+                    self.blocks[block] &= !mask
+                }
+            }
         }
+        // let (block, mask) = self.block_address(x, y, z);
+        // if v {
+        //     self.blocks[block] |= mask
+        // } else {
+        //     self.blocks[block] &= !mask
+        // }
     }
 }
 
 impl Bitmap for DenseBlockmap {
+    // fn get(&self, p: Point3i) -> bool {
+    //     //self.get(p.x(), p.y().p.z())
+    //     let x = p.x();
+    //     let y = p.y();
+    //     let z = p.z();
+
+    //     if x < 0
+    //         || y < 0
+    //         || z < 0
+    //         || x as usize >= self.x
+    //         || y as usize >= self.y
+    //         || z as usize >= self.z
+    //     {
+    //         return false;
+    //     }
+    //     DenseBlockmap::get(self, x as usize, y as usize, z as usize)
+    // }
+
     fn get(&self, p: Point3i) -> bool {
         //self.get(p.x(), p.y().p.z())
         let x = p.x();
         let y = p.y();
         let z = p.z();
 
-        if x < 0
-            || y < 0
-            || z < 0
-            || x as usize >= self.x
-            || y as usize >= self.y
-            || z as usize >= self.z
-        {
+        if x < 0 || y < 0 || z < 0 {
             return false;
         }
-        DenseBlockmap::get(self, x as usize, y as usize, z as usize)
+        match DenseBlockmap::get(self, x as usize, y as usize, z as usize) {
+            Some(v) => v,
+            None => false,
+        }
     }
 
     fn print(&self) {
@@ -207,10 +249,10 @@ fn test_basic() {
     let mut bm = DenseBlockmap::new(1024, 1024, 1024);
 
     bm.set(666, 123, 731, true);
-    assert!(bm.get(666, 123, 731));
-    assert!(!bm.get(666, 123, 732));
-    assert!(!bm.get(667, 123, 732));
-    assert!(!bm.get(666, 124, 732));
+    assert!(bm.get(666, 123, 731).unwrap());
+    assert!(!bm.get(666, 123, 732).unwrap());
+    assert!(!bm.get(667, 123, 732).unwrap());
+    assert!(!bm.get(666, 124, 732).unwrap());
 }
 
 fn bench(bm: &dyn map::Bitmap, cells: &[Point3i]) {
@@ -233,7 +275,7 @@ fn trace() {
 
     let mut cells = Vec::new();
     for ((x, y, z), v) in bm.cell_iter() {
-        assert_eq!(dbm.get(x, y, z), v);
+        assert_eq!(dbm.get(x, y, z).unwrap(), v);
         cells.push(Point3i::new(x as i32, y as i32, z as i32));
     }
 
