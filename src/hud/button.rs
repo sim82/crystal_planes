@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{ecs::WorldQuery, prelude::*};
 
 /// This example illustrates how to create a button that changes color and text based on its interaction state.
 
@@ -6,8 +6,8 @@ pub struct ButtonPlugin;
 impl Plugin for ButtonPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.init_resource::<ButtonMaterials>()
-            .add_system(toggle_button_system.thread_local_system())
-            .add_system(toggle_button_text_system.thread_local_system());
+            .add_system(toggle_button_system.system())
+            .add_system(toggle_button_text_system.system());
     }
 }
 
@@ -47,12 +47,12 @@ impl ToggleButton {
 }
 
 fn toggle_button_system(world: &mut World, res: &mut Resources) {
-    let query = world.query_mut::<(
+    let query = world.query_filtered_mut::<(
         &mut ToggleButton,
         &Children,
-        Mutated<Interaction>,
+        &Interaction,
         &mut Handle<ColorMaterial>,
-    )>();
+    ), (Mutated<Interaction>,)>();
     for (mut toggle_button, _children, interaction, mut material) in query {
         match *interaction {
             Interaction::Clicked => {
@@ -74,6 +74,37 @@ fn toggle_button_system(world: &mut World, res: &mut Resources) {
         }
     }
 }
+
+// fn toggle_button_system(
+//     button_materials: Res<ButtonMaterials>,
+//     query: Query<(
+//         &mut ToggleButton,
+//         &Children,
+//         Mutated<Interaction>,
+//         &mut Handle<ColorMaterial>,
+//     )>,
+// ) {
+//     for (mut toggle_button, _children, interaction, mut material) in query {
+//         match *interaction {
+//             Interaction::Clicked => {
+//                 {
+//                     let action = &mut *toggle_button.action;
+//                     action(res);
+//                 }
+//                 let button_materials = res.get::<ButtonMaterials>().unwrap();
+//                 *material = button_materials.pressed.clone();
+//             }
+//             Interaction::Hovered => {
+//                 let button_materials = res.get::<ButtonMaterials>().unwrap();
+//                 *material = button_materials.hovered.clone();
+//             }
+//             Interaction::None => {
+//                 let button_materials = res.get::<ButtonMaterials>().unwrap();
+//                 *material = button_materials.normal.clone();
+//             }
+//         }
+//     }
+// }
 
 fn toggle_button_text_system(world: &mut World, res: &mut Resources) {
     let mut set_texts = Vec::new();

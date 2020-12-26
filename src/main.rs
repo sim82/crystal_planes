@@ -21,15 +21,16 @@ mod util;
 
 /// This example illustrates how to create a custom material asset and a shader that uses that material
 fn main() {
+    let planes_stage = SystemStage::serial()
+        .with_system(setup.system())
+        .with_system(setup_bevy.system());
     App::build()
         .add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         // .add_plugin(PrintDiagnosticsPlugin::default())
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
-        .add_startup_stage("planes")
-        .add_startup_system_to_stage("planes", setup.system())
-        .add_startup_system_to_stage("planes", setup_bevy.system())
-        .add_startup_stage_after("planes", "renderer")
+        .add_startup_stage("planes", planes_stage)
+        .add_startup_stage_after("planes", "renderer", SystemStage::serial())
         .add_plugin(quad_render::QuadRenderPlugin::default())
         .add_plugin(octree_render::OctreeRenderPlugin::default())
         //.add_system(light_move_system.system())
@@ -49,7 +50,7 @@ fn main() {
     println!("run returned");
 }
 
-fn setup(mut commands: Commands) {
+fn setup(commands: &mut Commands) {
     let bm = map::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
     let bm = Box::new(map::DenseBlockmap::from_bitmap(&*bm));
     let mut planes = map::PlanesSep::new();
@@ -90,13 +91,13 @@ fn rotator_system(
         return;
     }
     for (_rotator, mut transform) in query.iter_mut() {
-        transform.rotate(Quat::from_rotation_y(0.5 * time.delta_seconds));
+        transform.rotate(Quat::from_rotation_y(0.5 * time.delta_seconds()));
     }
 }
 
 // stupid name for a system...
 fn setup_bevy(
-    mut commands: Commands,
+    commands: &mut Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -114,7 +115,7 @@ fn setup_bevy(
 
     commands
         // parent cube
-        .spawn(PbrComponents {
+        .spawn(PbrBundle {
             mesh: cube_handle,
             material: cube_material_handle,
             transform: Transform::from_translation(Vec3::new(0.0, 20.0, 0.0)),
@@ -124,7 +125,7 @@ fn setup_bevy(
         .with_children(|parent| {
             // child cube
             parent
-                .spawn(PbrComponents {
+                .spawn(PbrBundle {
                     mesh: sphere_handle,
                     material: sphere_material_handle,
                     transform: Transform::from_translation(Vec3::new(0.0, 0.0, 30.0)),
@@ -134,13 +135,13 @@ fn setup_bevy(
                     color: Vec3::new(1.0, 0.9, 0.8),
                 })
                 // light
-                .spawn(LightComponents {
+                .spawn(LightBundle {
                     transform: Transform::from_translation(Vec3::new(0.0, 0.0, 25.0)),
                     ..Default::default()
                 });
         })
         // camera
-        .spawn(Camera3dComponents {
+        .spawn(Camera3dBundle {
             transform: Transform::from_matrix(Mat4::face_toward(
                 Vec3::new(5.0, 10.0, 10.0),
                 Vec3::new(0.0, 0.0, 0.0),
@@ -211,30 +212,30 @@ struct LightUpdateState {
 fn light_update_system(
     mut state: ResMut<LightUpdateState>,
     rad_update_channel: Res<Mutex<Sender<rad::worker::RenderToRad>>>,
-    rad_light: &RadPointLight,
-    transform: &GlobalTransform,
-    // Mutated<GlobalTransform>)>,
-    // _: Mutated<Position>,
+    query: Query<(&RadPointLight, &GlobalTransform)>, // Mutated<GlobalTransform>)>,
+                                                      // _: Mutated<Position>
 ) {
-    let pos = transform.translation * 4.0;
+    for (rad_light, transform) in query.iter() {
+        let pos = transform.translation * 4.0;
 
-    // FIXME: shouldn't Mutated<GlobalTransform>)> do this?
-    if Some(pos) == state.last_pos {
-        return;
+        // FIXME: shouldn't Mutated<GlobalTransform>)> do this?
+        if Some(pos) == state.last_pos {
+            return;
+        }
+        // println!("send: {:?}", pos);
+
+        state.last_pos = Some(pos);
+
+        rad_update_channel
+            .lock()
+            .unwrap()
+            .send(rad::worker::RenderToRad::PointLight(
+                0,
+                pos,
+                rad_light.color,
+            ))
+            .unwrap();
     }
-    // println!("send: {:?}", pos);
-
-    state.last_pos = Some(pos);
-
-    rad_update_channel
-        .lock()
-        .unwrap()
-        .send(rad::worker::RenderToRad::PointLight(
-            0,
-            pos,
-            rad_light.color,
-        ))
-        .unwrap();
 }
 
 use hud::DemoSystemState;
@@ -256,8 +257,8 @@ fn demo_system(
     time: Res<Time>,
     rad_update_channel: Res<Mutex<Sender<rad::worker::RenderToRad>>>,
 ) {
-    state.cycle_timer.tick(time.delta_seconds);
-    if state.cycle && state.cycle_timer.just_finished {
+    state.cycle_timer.tick(time.delta_seconds());
+    if state.cycle && state.cycle_timer.just_finished() {
         rad_update_channel
             .lock()
             .unwrap()

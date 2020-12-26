@@ -408,14 +408,14 @@ impl RadData {
             let i = *i as usize;
             let j = *j as usize;
             let diffuse = self.diffuse[i];
-            r[i] += front.r[j] * diffuse.x() * *ff;
-            g[i] += front.g[j] * diffuse.y() * *ff;
-            b[i] += front.b[j] * diffuse.z() * *ff;
+            r[i] += front.r[j] * diffuse.x * *ff;
+            g[i] += front.g[j] * diffuse.y * *ff;
+            b[i] += front.b[j] * diffuse.z * *ff;
         }
         for i in 0..r.len() {
-            self.back_buf.0.r[i] += self.emit[i].x();
-            self.back_buf.0.g[i] += self.emit[i].y();
-            self.back_buf.0.b[i] += self.emit[i].z();
+            self.back_buf.0.r[i] += self.emit[i].x;
+            self.back_buf.0.g[i] += self.emit[i].y;
+            self.back_buf.0.b[i] += self.emit[i].z;
         }
         formfactors.len()
     }
@@ -437,9 +437,9 @@ impl RadData {
                 let diffuse = diffuse[i];
                 for extent in &extents.0[i] {
                     for (j, ff) in extent.ffs.iter().enumerate() {
-                        rad_r += front.r[j + extent.start as usize] * diffuse.x() * *ff;
-                        rad_g += front.g[j + extent.start as usize] * diffuse.y() * *ff;
-                        rad_b += front.b[j + extent.start as usize] * diffuse.z() * *ff;
+                        rad_r += front.r[j + extent.start as usize] * diffuse.x * *ff;
+                        rad_g += front.g[j + extent.start as usize] * diffuse.y * *ff;
+                        rad_b += front.b[j + extent.start as usize] * diffuse.z * *ff;
                     }
                 }
                 (rad_r, rad_g, rad_b)
@@ -447,9 +447,9 @@ impl RadData {
             .collect();
 
         for (i, (rad_r, rad_g, rad_b)) in rad_out.iter().enumerate() {
-            self.back_buf.0.r[i] = self.emit[i].x() + rad_r;
-            self.back_buf.0.g[i] = self.emit[i].y() + rad_g;
-            self.back_buf.0.b[i] = self.emit[i].z() + rad_b;
+            self.back_buf.0.r[i] = self.emit[i].x + rad_r;
+            self.back_buf.0.g[i] = self.emit[i].y + rad_g;
+            self.back_buf.0.b[i] = self.emit[i].z + rad_b;
         }
     }
 

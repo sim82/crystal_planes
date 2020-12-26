@@ -226,7 +226,7 @@ impl Drop for ProfTimer {
 }
 
 pub fn vec_mul(v1: &Vec3, v2: &Vec3) -> Vec3 {
-    Vec3::new(v1.x() * v2.x(), v1.y() * v2.y(), v1.z() * v2.z())
+    Vec3::new(v1.x * v2.x, v1.y * v2.y, v1.z * v2.z)
 }
 
 #[allow(dead_code)]

@@ -78,7 +78,7 @@ fn update_hud_system(
 struct RotateButtonText;
 
 fn setup_hud_system(
-    mut commands: Commands,
+    commands: &mut Commands,
     asset_server: Res<AssetServer>,
     mut _materials: ResMut<Assets<ColorMaterial>>,
     button_materials: Res<button::ButtonMaterials>,
@@ -86,8 +86,8 @@ fn setup_hud_system(
     let font_handle = asset_server.load("fonts/FiraMono-Medium.ttf");
     commands
         // 2d camera
-        .spawn(UiCameraComponents::default())
-        .spawn(NodeComponents {
+        .spawn(CameraUiBundle::default())
+        .spawn(NodeBundle {
             style: Style {
                 flex_direction: FlexDirection::ColumnReverse,
                 flex_shrink: 1f32,
@@ -98,7 +98,7 @@ fn setup_hud_system(
         })
         .with_children(|parent| {
             parent
-                .spawn(TextComponents {
+                .spawn(TextBundle {
                     style: Style {
                         align_self: AlignSelf::FlexStart,
                         // margin: Rect {
@@ -113,6 +113,7 @@ fn setup_hud_system(
                         style: TextStyle {
                             font_size: 24.0,
                             color: Color::WHITE,
+                            ..Default::default()
                         },
                     },
                     ..Default::default()
@@ -122,7 +123,7 @@ fn setup_hud_system(
                     FrameTimeDiagnosticsPlugin::FPS,
                     false,
                 ))
-                .spawn(TextComponents {
+                .spawn(TextBundle {
                     style: Style {
                         align_self: AlignSelf::FlexStart,
                         // margin: Rect {
@@ -137,6 +138,7 @@ fn setup_hud_system(
                         style: TextStyle {
                             font_size: 24.0,
                             color: Color::WHITE,
+                            ..Default::default()
                         },
                     },
                     ..Default::default()
@@ -146,7 +148,7 @@ fn setup_hud_system(
                     super::quad_render::RAD_INT_PER_SECOND,
                     true,
                 ))
-                .spawn(TextComponents {
+                .spawn(TextBundle {
                     style: Style {
                         align_self: AlignSelf::FlexStart,
                         // margin: Rect {
@@ -161,12 +163,13 @@ fn setup_hud_system(
                         style: TextStyle {
                             font_size: 24.0,
                             color: Color::WHITE,
+                            ..Default::default()
                         },
                     },
                     ..Default::default()
                 })
                 .with(HudSrc::RenderStatus)
-                .spawn(ButtonComponents {
+                .spawn(ButtonBundle {
                     style: Style {
                         size: Size::new(Val::Px(150.0), Val::Px(65.0)),
                         justify_content: JustifyContent::Center,
@@ -195,20 +198,21 @@ fn setup_hud_system(
                 ))
                 .with_children(|parent| {
                     parent
-                        .spawn(TextComponents {
+                        .spawn(TextBundle {
                             text: Text {
                                 value: "Start".to_string(),
                                 font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                                 style: TextStyle {
                                     font_size: 40.0,
                                     color: Color::rgb(0.8, 0.8, 0.8),
+                                    ..Default::default()
                                 },
                             },
                             ..Default::default()
                         })
                         .with(RotateButtonText);
                 })
-                .spawn(ButtonComponents {
+                .spawn(ButtonBundle {
                     style: Style {
                         size: Size::new(Val::Px(150.0), Val::Px(65.0)),
                         justify_content: JustifyContent::Center,
@@ -235,20 +239,21 @@ fn setup_hud_system(
                 ))
                 .with_children(|parent| {
                     parent
-                        .spawn(TextComponents {
+                        .spawn(TextBundle {
                             text: Text {
                                 value: "Start".to_string(),
                                 font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                                 style: TextStyle {
                                     font_size: 40.0,
                                     color: Color::rgb(0.8, 0.8, 0.8),
+                                    ..Default::default()
                                 },
                             },
                             ..Default::default()
                         })
                         .with(RotateButtonText);
                 })
-                .spawn(ButtonComponents {
+                .spawn(ButtonBundle {
                     style: Style {
                         size: Size::new(Val::Px(150.0), Val::Px(65.0)),
                         justify_content: JustifyContent::Center,
@@ -276,20 +281,21 @@ fn setup_hud_system(
                 ))
                 .with_children(|parent| {
                     parent
-                        .spawn(TextComponents {
+                        .spawn(TextBundle {
                             text: Text {
                                 value: "Start".to_string(),
                                 font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                                 style: TextStyle {
                                     font_size: 40.0,
                                     color: Color::rgb(0.8, 0.8, 0.8),
+                                    ..Default::default()
                                 },
                             },
                             ..Default::default()
                         })
                         .with(RotateButtonText);
                 })
-                .spawn(ButtonComponents {
+                .spawn(ButtonBundle {
                     style: Style {
                         size: Size::new(Val::Px(150.0), Val::Px(65.0)),
                         justify_content: JustifyContent::Center,
@@ -318,13 +324,14 @@ fn setup_hud_system(
                 ))
                 .with_children(|parent| {
                     parent
-                        .spawn(TextComponents {
+                        .spawn(TextBundle {
                             text: Text {
                                 value: "Start".to_string(),
                                 font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                                 style: TextStyle {
                                     font_size: 40.0,
                                     color: Color::rgb(0.8, 0.8, 0.8),
+                                    ..Default::default()
                                 },
                             },
                             ..Default::default()
@@ -332,7 +339,7 @@ fn setup_hud_system(
                         .with(RotateButtonText);
                 });
         });
-    // .spawn(TextComponents {
+    // .spawn(TextBundle {
     //     style: Style {
     //         ..Default::default()
     //     },

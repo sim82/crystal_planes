@@ -5,7 +5,7 @@ use crystal_planes::octree_render;
 fn main() {
     App::build()
         .add_plugins(DefaultPlugins)
-        .add_startup_stage("renderer")
+        // .add_startup_stage("renderer")
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
         .add_plugin(octree_render::OctreeRenderPlugin::default())
         .add_startup_system(setup.system())
@@ -13,7 +13,7 @@ fn main() {
 }
 
 fn setup(
-    mut commands: Commands,
+    commands: &mut Commands,
     mut octants: ResMut<octree::Octants>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -24,7 +24,7 @@ fn setup(
     vis_info.root = octree::create_octants_bottom_up(&mut *octants, &points);
 
     commands
-        .spawn(Camera3dComponents {
+        .spawn(Camera3dBundle {
             transform: Transform::from_matrix(Mat4::face_toward(
                 Vec3::new(0.0, 0.0, 10.0),
                 Vec3::new(0.0, 0.0, 0.0),
@@ -38,7 +38,7 @@ fn setup(
             ..Default::default()
         })
         // light
-        .spawn(LightComponents {
+        .spawn(LightBundle {
             transform: Transform::from_translation(Vec3::new(4.0, 5.0, -4.0)),
             ..Default::default()
         });
@@ -77,18 +77,18 @@ fn max4(x: f32, y: f32, z: f32, w: f32) -> f32 {
 fn cast_ray(octants: &octree::Octants, root: octree::OctantId, p: Vec3, d: Vec3) {
     // let epsilon = (-s_max)
 
-    let tx_coef = -1f32 / d.x().abs();
-    let ty_coef = -1f32 / d.y().abs();
-    let tz_coef = -1f32 / d.z().abs();
+    let tx_coef = -1f32 / d.x.abs();
+    let ty_coef = -1f32 / d.y.abs();
+    let tz_coef = -1f32 / d.z.abs();
 
-    let tx_bias = tx_coef * p.x();
-    let ty_bias = ty_coef * p.y();
-    let tz_bias = tz_coef * p.z();
+    let tx_bias = tx_coef * p.x;
+    let ty_bias = ty_coef * p.y;
+    let tz_bias = tz_coef * p.z;
 
     // TODO: octant mirroring stuff
-    assert!(d.x() <= 0f32);
-    assert!(d.y() <= 0f32);
-    assert!(d.z() <= 0f32);
+    assert!(d.x <= 0f32);
+    assert!(d.y <= 0f32);
+    assert!(d.z <= 0f32);
 
     let root_octant = octants.get(root);
     let (root_pos, root_size) = root_octant.get_geometry(root_octant.scale);
@@ -126,15 +126,15 @@ fn cast_ray(octants: &octree::Octants, root: octree::OctantId, p: Vec3, d: Vec3)
 
     if 0.5 * bounds_max * tx_coef - tx_bias > t_min {
         idx ^= 1;
-        *pos.x_mut() = 0.5 * bounds_max;
+        pos.x = 0.5 * bounds_max;
     };
     if 0.5 * bounds_max * ty_coef - ty_bias > t_min {
         idx ^= 2;
-        *pos.y_mut() = 0.5 * bounds_max;
+        pos.y = 0.5 * bounds_max;
     };
     if 0.5 * bounds_max * tz_coef - tz_bias > t_min {
         idx ^= 4;
-        *pos.z_mut() = 0.5 * bounds_max;
+        pos.z = 0.5 * bounds_max;
     };
 
     // return;
@@ -142,9 +142,9 @@ fn cast_ray(octants: &octree::Octants, root: octree::OctantId, p: Vec3, d: Vec3)
     while scale < s_max {
         let octant = octants.get(parent);
 
-        let tx_corner = pos.x() * tx_coef - tx_bias;
-        let ty_corner = pos.y() * ty_coef - ty_bias;
-        let tz_corner = pos.z() * tz_coef - tz_bias;
+        let tx_corner = pos.x * tx_coef - tx_bias;
+        let ty_corner = pos.y * ty_coef - ty_bias;
+        let tz_corner = pos.z * tz_coef - tz_bias;
         let tc_max = min3(tx_corner, ty_corner, tz_corner);
 
         println!(
@@ -185,15 +185,15 @@ fn cast_ray(octants: &octree::Octants, root: octree::OctantId, p: Vec3, d: Vec3)
                     scale_exp2 = half;
                     if tx_center > t_min {
                         idx ^= 1;
-                        *pos.x_mut() += scale_exp2;
+                        pos.x += scale_exp2;
                     }
                     if ty_center > t_min {
                         idx ^= 2;
-                        *pos.y_mut() += scale_exp2;
+                        pos.y += scale_exp2;
                     }
                     if tz_center > t_min {
                         idx ^= 4;
-                        *pos.z_mut() += scale_exp2;
+                        pos.z += scale_exp2;
                     }
 
                     t_max = tv_max;
@@ -208,15 +208,15 @@ fn cast_ray(octants: &octree::Octants, root: octree::OctantId, p: Vec3, d: Vec3)
         let mut step_mask = 0;
         if tx_corner <= tc_max {
             step_mask ^= 1;
-            *pos.x_mut() -= scale_exp2;
+            pos.x -= scale_exp2;
         }
         if ty_corner <= tc_max {
             step_mask ^= 2;
-            *pos.y_mut() -= scale_exp2;
+            pos.y -= scale_exp2;
         }
         if tz_corner <= tc_max {
             step_mask ^= 4;
-            *pos.z_mut() -= scale_exp2;
+            pos.z -= scale_exp2;
         }
         t_min = tc_max;
         idx ^= step_mask;
@@ -230,27 +230,27 @@ fn cast_ray(octants: &octree::Octants, root: octree::OctantId, p: Vec3, d: Vec3)
             if (step_mask & 1) != 0 {
                 println!(
                     "x differing bits: {:b} {:b}",
-                    (pos.x() as i32),
-                    (pos.x() + scale_exp2) as i32
+                    (pos.x as i32),
+                    (pos.x + scale_exp2) as i32
                 );
 
-                differing_bits |= (pos.x() as i32) ^ ((pos.x() + scale_exp2) as i32)
+                differing_bits |= (pos.x as i32) ^ ((pos.x + scale_exp2) as i32)
             }
             if (step_mask & 2) != 0 {
                 println!(
                     "y differing bits: {} {}",
-                    (pos.y() as i32),
-                    (pos.y() + scale_exp2) as i32
+                    (pos.y as i32),
+                    (pos.y + scale_exp2) as i32
                 );
-                differing_bits |= (pos.y() as i32) ^ ((pos.y() + scale_exp2) as i32)
+                differing_bits |= (pos.y as i32) ^ ((pos.y + scale_exp2) as i32)
             }
             if (step_mask & 4) != 0 {
                 println!(
                     "z differing bits: {} {}",
-                    (pos.z() as i32),
-                    (pos.z() + scale_exp2) as i32
+                    (pos.z as i32),
+                    (pos.z + scale_exp2) as i32
                 );
-                differing_bits |= (pos.z() as i32) ^ ((pos.z() + scale_exp2) as i32)
+                differing_bits |= (pos.z as i32) ^ ((pos.z + scale_exp2) as i32)
             }
             println!(
                 "differing bits: {:b} {}",
@@ -268,12 +268,12 @@ fn cast_ray(octants: &octree::Octants, root: octree::OctantId, p: Vec3, d: Vec3)
             );
 
             // Round cube position and extract child slot index.
-            let shx = (pos.x() as i32) >> scale;
-            let shy = (pos.y() as i32) >> scale;
-            let shz = (pos.z() as i32) >> scale;
-            *pos.x_mut() = (shx << scale) as f32;
-            *pos.y_mut() = (shy << scale) as f32;
-            *pos.z_mut() = (shz << scale) as f32;
+            let shx = (pos.x as i32) >> scale;
+            let shy = (pos.y as i32) >> scale;
+            let shz = (pos.z as i32) >> scale;
+            pos.x = (shx << scale) as f32;
+            pos.y = (shy << scale) as f32;
+            pos.z = (shz << scale) as f32;
             idx = ((shx & 1) | ((shy & 1) << 1) | ((shz & 1) << 2)) as usize;
             // Prevent same parent from being stored again and invalidate cached child descriptor.
             h = 0f32;

@@ -42,13 +42,13 @@ fn setup(mut octants: ResMut<octree::Octants>, mut vis_info: ResMut<OctreeVisInf
 }
 
 fn vis_update_system(
-    mut commands: Commands,
+    commands: &mut Commands,
     mut vis_info: ResMut<OctreeVisInfo>,
     octants: Res<octree::Octants>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut query: Query<(Mut<Draw>, &octree::OctantId, Entity)>,
-    mut quad_query: Query<(Mut<Draw>, &super::quad_render::QuadRenderMesh)>,
+    mut query: Query<(Mut<Visible>, &octree::OctantId, Entity)>,
+    mut quad_query: Query<(Mut<Visible>, &super::quad_render::QuadRenderMesh)>,
 ) {
     let root = match vis_info.root {
         Some(root) => root,
@@ -73,18 +73,18 @@ fn vis_update_system(
                 let color =
                     crate::util::hsv_to_rgb(thread_rng().gen_range(0f32, 360f32), 1f32, 1f32);
                 let cube_material_handle = materials.add(StandardMaterial {
-                    albedo: Color::rgba(color.x(), color.y(), color.z(), 1.0),
+                    albedo: Color::rgba(color.x, color.y, color.z, 1.0),
                     ..Default::default()
                 });
 
                 commands
-                    .spawn(PbrComponents {
+                    .spawn(PbrBundle {
                         mesh,
                         material: cube_material_handle,
                         transform: Transform::from_translation(
                             pos.into_vec3() * 0.25 + Vec3::splat(cube_size - 0.125),
                         ),
-                        draw: Draw {
+                        visible: Visible {
                             is_transparent: false,
                             is_visible: level == octant.scale,
                             ..Default::default()
@@ -98,22 +98,22 @@ fn vis_update_system(
             println!("spawned: {}", num);
             vis_info.spawned = true;
 
-            for (mut draw, _) in quad_query.iter_mut() {
-                draw.is_visible = false;
+            for (mut visible, _) in quad_query.iter_mut() {
+                visible.is_visible = false;
             }
         }
         (None, Some(level)) if vis_info.spawned => {
-            for (mut draw, id, _) in query.iter_mut() {
-                draw.is_visible = Some(level) == Some(octants.get(*id).scale);
+            for (mut visible, id, _) in query.iter_mut() {
+                visible.is_visible = Some(level) == Some(octants.get(*id).scale);
                 // println!("draw: {}", draw.is_visible);
             }
-            for (mut draw, _) in quad_query.iter_mut() {
-                draw.is_visible = false;
+            for (mut visible, _) in quad_query.iter_mut() {
+                visible.is_visible = false;
             }
         }
         (Some(old_level), Some(level)) if old_level != level => {
-            for (mut draw, id, _) in query.iter_mut() {
-                draw.is_visible = Some(level) == Some(octants.get(*id).scale);
+            for (mut visible, id, _) in query.iter_mut() {
+                visible.is_visible = Some(level) == Some(octants.get(*id).scale);
                 // println!("draw: {}", draw.is_visible);
             }
         }

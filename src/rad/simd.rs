@@ -69,15 +69,15 @@ impl ExtentsSimd {
         let (r, g, b) = src;
         for (j, ff) in &self.single {
             unsafe {
-                rad_r += r.get_unchecked(*j as usize) * diffuse.x() * *ff;
-                rad_g += g.get_unchecked(*j as usize) * diffuse.y() * *ff;
-                rad_b += b.get_unchecked(*j as usize) * diffuse.z() * *ff;
+                rad_r += r.get_unchecked(*j as usize) * diffuse.x * *ff;
+                rad_g += g.get_unchecked(*j as usize) * diffuse.y * *ff;
+                rad_b += b.get_unchecked(*j as usize) * diffuse.z * *ff;
             }
         }
         {
-            let vdiffuse_r = f32x4::splat(diffuse.x());
-            let vdiffuse_g = f32x4::splat(diffuse.y());
-            let vdiffuse_b = f32x4::splat(diffuse.z());
+            let vdiffuse_r = f32x4::splat(diffuse.x);
+            let vdiffuse_g = f32x4::splat(diffuse.y);
+            let vdiffuse_b = f32x4::splat(diffuse.z);
 
             let mut vsum_r = f32x4::splat(0f32);
             let mut vsum_g = f32x4::splat(0f32);
@@ -101,9 +101,9 @@ impl ExtentsSimd {
         }
 
         {
-            let vdiffuse_r = f32x8::splat(diffuse.x());
-            let vdiffuse_g = f32x8::splat(diffuse.y());
-            let vdiffuse_b = f32x8::splat(diffuse.z());
+            let vdiffuse_r = f32x8::splat(diffuse.x);
+            let vdiffuse_g = f32x8::splat(diffuse.y);
+            let vdiffuse_b = f32x8::splat(diffuse.z);
 
             let mut vsum_r = f32x8::splat(0f32);
             let mut vsum_g = f32x8::splat(0f32);
@@ -126,9 +126,9 @@ impl ExtentsSimd {
             rad_b += vsum_b.sum();
         }
         {
-            let vdiffuse_r = f32x16::splat(diffuse.x());
-            let vdiffuse_g = f32x16::splat(diffuse.y());
-            let vdiffuse_b = f32x16::splat(diffuse.z());
+            let vdiffuse_r = f32x16::splat(diffuse.x);
+            let vdiffuse_g = f32x16::splat(diffuse.y);
+            let vdiffuse_b = f32x16::splat(diffuse.z);
 
             let mut vsum_r = f32x16::splat(0f32);
             let mut vsum_g = f32x16::splat(0f32);
@@ -153,6 +153,6 @@ impl ExtentsSimd {
         // dest.0[i] = rad_r + emit[i].x();
         // dest.1[i] = rad_g + emit[i].y();
         // dest.2[i] = rad_b + emit[i].z();
-        (rad_r + emit.x(), rad_g + emit.y(), rad_b + emit.z())
+        (rad_r + emit.x, rad_g + emit.y, rad_b + emit.z)
     }
 }

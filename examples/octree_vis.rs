@@ -23,7 +23,7 @@ struct OctreeLevel {
 }
 
 fn setup(
-    mut commands: Commands,
+    commands: &mut Commands,
     mut octants: ResMut<octree::Octants>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -61,16 +61,16 @@ fn setup(
         let color =
             crystal_planes::util::hsv_to_rgb(thread_rng().gen_range(0f32, 360f32), 1f32, 1f32);
         let cube_material_handle = materials.add(StandardMaterial {
-            albedo: Color::rgba(color.x(), color.y(), color.z(), 1.0),
+            albedo: Color::rgba(color.x, color.y, color.z, 1.0),
             ..Default::default()
         });
 
         commands
-            .spawn(PbrComponents {
+            .spawn(PbrBundle {
                 mesh,
                 material: cube_material_handle,
                 transform: Transform::from_translation(pos.into_vec3() * 0.125),
-                draw: Draw {
+                visible: Visible {
                     is_transparent: false,
                     is_visible: octant.scale == 2,
                     ..Default::default()
@@ -115,7 +115,7 @@ fn setup(
     //     })
 
     commands
-        .spawn(Camera3dComponents {
+        .spawn(Camera3dBundle {
             transform: Transform::from_matrix(Mat4::face_toward(
                 Vec3::new(0.0, 0.0, 10.0),
                 Vec3::new(0.0, 0.0, 0.0),
@@ -129,7 +129,7 @@ fn setup(
             ..Default::default()
         })
         // light
-        .spawn(LightComponents {
+        .spawn(LightBundle {
             transform: Transform::from_translation(Vec3::new(4.0, 5.0, -4.0)),
             ..Default::default()
         });

@@ -5,14 +5,14 @@ use crate::rad;
 use bevy::{
     diagnostic::{Diagnostic, DiagnosticId, Diagnostics},
     prelude::*,
+    reflect::TypeUuid,
     render::{
         mesh::{shape, VertexAttributeValues},
-        pipeline::{DynamicBinding, PipelineDescriptor, PipelineSpecialization, RenderPipeline},
+        pipeline::{PipelineDescriptor, PipelineSpecialization, RenderPipeline},
         render_graph::{base, AssetRenderResourcesNode, RenderGraph},
         renderer::RenderResources,
         shader::{ShaderStage, ShaderStages},
     },
-    type_registry::TypeUuid,
 };
 
 // FIXME: this is only defined here because apply_frontbuf directly needs to modify it. Implementation should be moved from main.rs
@@ -71,7 +71,7 @@ struct Plane {
 pub struct QuadRenderMesh;
 
 fn setup(
-    mut commands: Commands,
+    commands: &mut Commands,
     mut pipelines: ResMut<Assets<PipelineDescriptor>>,
     mut shaders: ResMut<Assets<Shader>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -97,29 +97,29 @@ fn setup(
         .add_node_edge("my_material", base::node::MAIN_PASS)
         .unwrap();
 
-    let pipelines = RenderPipelines::from_pipelines(vec![RenderPipeline::specialized(
-        pipeline_handle,
-        // NOTE: in the future you wont need to manually declare dynamic bindings
-        PipelineSpecialization {
-            dynamic_bindings: vec![
-                // Transform
-                DynamicBinding {
-                    bind_group: 1,
-                    binding: 0,
-                },
-                // MyMaterial_color
-                DynamicBinding {
-                    bind_group: 1,
-                    binding: 1,
-                },
-            ],
-            ..Default::default()
-        },
-    )]);
+    // let pipelines = RenderPipelines::from_pipelines(vec![RenderPipeline::specialized(
+    //     pipeline_handle,
+    //     // NOTE: in the future you wont need to manually declare dynamic bindings
+    //     PipelineSpecialization {
+    //         dynamic_bindings: vec![
+    //             // Transform
+    //             DynamicBinding {
+    //                 bind_group: 1,
+    //                 binding: 0,
+    //             },
+    //             // MyMaterial_color
+    //             DynamicBinding {
+    //                 bind_group: 1,
+    //                 binding: 1,
+    //             },
+    //         ],
+    //         ..Default::default()
+    //     },
+    // )]);
 
     // Setup our world
     commands
-        .spawn(Camera3dComponents {
+        .spawn(Camera3dBundle {
             transform: Transform::from_matrix(Mat4::face_toward(
                 Vec3::new(10.0, 5.0, 40.0),
                 Vec3::new(10.0, 5.0, 0.0),
@@ -200,9 +200,11 @@ fn setup(
 
             let mesh_handle = meshes.add(mesh);
             commands
-                .spawn(MeshComponents {
+                .spawn(MeshBundle {
                     mesh: mesh_handle.clone(),
-                    render_pipelines: pipelines.clone(),
+                    render_pipelines: RenderPipelines::from_pipelines(vec![RenderPipeline::new(
+                        pipeline_handle.clone(),
+                    )]),
                     ..Default::default()
                 })
                 .with(materials.add(MyMaterial {
@@ -257,7 +259,7 @@ fn setup(
                 for v in vs {
                     let v: Vec3 = v.clone().into();
                     let v: Vec3 = (*trans * v.extend(1.0)).truncate().into();
-                    position.push([v.x(), v.y(), v.z()]);
+                    position.push([v.x, v.y, v.z]);
                 }
             }
             _ => panic!("expected Vertex_Position to be Float3"),
