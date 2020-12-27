@@ -1,9 +1,6 @@
-use std::sync::{mpsc::Receiver, Mutex};
-
 use crate::map;
 use crate::rad;
 use bevy::{
-    diagnostic::{Diagnostic, DiagnosticId, Diagnostics},
     prelude::*,
     reflect::TypeUuid,
     render::{
@@ -261,40 +258,20 @@ fn setup(
         planes,
     );
 }
-
+#[derive(Default)]
+pub struct RadFrontbufState {
+    pub updated: bool,
+}
 fn apply_frontbuf(
     front_buf: Res<rad::worker::FrontBuf>,
     mut meshes: ResMut<Assets<Mesh>>,
-    rad_to_render: Res<Mutex<Receiver<rad::worker::RadToRender>>>,
-    mut diagnostics: ResMut<Diagnostics>,
-    mut render_status: ResMut<crate::hud::RenderStatus>,
-
-    mut rotator_system_state: ResMut<RotatorSystemState>,
+    mut fb_state: ResMut<RadFrontbufState>,
     query: Query<(&rad::PlaneIndex, &Plane)>,
 ) {
-    let mut update = false;
-
-    // FIXME: move general RadToRender message processing somewhere else
-    for cmd in rad_to_render.lock().unwrap().try_iter() {
-        match cmd {
-            rad::worker::RadToRender::IterationDone { num_int, duration } => {
-                diagnostics
-                    .add_measurement(RAD_INT_PER_SECOND, num_int as f64 / duration.as_secs_f64());
-                update = true;
-            }
-            rad::worker::RadToRender::StatusUpdate(text) => {
-                render_status.text = text;
-            }
-            rad::worker::RadToRender::RadReady => {
-                render_status.text = "ready".into();
-                rotator_system_state.run = true;
-            }
-        }
-    }
-
-    if !update {
+    if !fb_state.updated {
         return;
     }
+    fb_state.updated = false;
     let mut mesh_handle = Handle::<Mesh>::default();
     let mut new_vs = Vec::new();
     for (rad_plane, plane) in &mut query.iter() {
@@ -342,28 +319,15 @@ fn apply_frontbuf(
     }
 }
 
-pub const RAD_INT_PER_SECOND: DiagnosticId =
-    DiagnosticId::from_u128(337040787172757619024841343456040760896);
-
-fn setup_diagnostic_system(mut diagnostics: ResMut<Diagnostics>) {
-    // Diagnostics must be initialized before measurements can be added.
-    // In general it's a good idea to set them up in a "startup system".
-    diagnostics.add(Diagnostic::new(
-        RAD_INT_PER_SECOND,
-        "rad_int_per_second",
-        10,
-    ));
-}
-
 #[derive(Default)]
 pub struct QuadRenderPlugin;
 
 impl Plugin for QuadRenderPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.add_startup_system_to_stage("renderer", setup.system())
-            .add_startup_system(setup_diagnostic_system.system())
             // .add_system(blink_system.system())
             .add_system(apply_frontbuf.system())
-            .add_asset::<MyMaterial>();
+            .add_asset::<MyMaterial>()
+            .init_resource::<RadFrontbufState>();
     }
 }

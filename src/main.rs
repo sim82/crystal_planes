@@ -1,10 +1,10 @@
 use std::sync::{
-    mpsc::{self, Sender},
+    mpsc::{self, Receiver, Sender},
     Mutex,
 };
 
 #[allow(unused_imports)]
-use bevy::diagnostic::DiagnosticsPlugin;
+use bevy::diagnostic::{Diagnostic, Diagnostics, DiagnosticsPlugin};
 
 use bevy::{
     diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, render::mesh::shape, winit::WinitConfig,
@@ -45,6 +45,8 @@ fn main() {
         .add_resource(WinitConfig {
             return_from_run: true,
         })
+        .add_system(rad_to_render_update.system())
+        .add_startup_system(setup_diagnostic_system.system())
         // .add_system_to_stage("background", test_background.system())
         // .add_system_to_stage("background", test_background2.system())
         // .add_plugin(mesh_custom_attribute::TestPlugin)
@@ -271,6 +273,43 @@ fn demo_system(
                 rand_color(180f32, 360f32),
             ))
             .unwrap();
+    }
+}
+
+fn setup_diagnostic_system(mut diagnostics: ResMut<Diagnostics>) {
+    // Diagnostics must be initialized before measurements can be added.
+    // In general it's a good idea to set them up in a "startup system".
+    diagnostics.add(Diagnostic::new(
+        hud::RAD_INT_PER_SECOND,
+        "rad_int_per_second",
+        10,
+    ));
+}
+
+fn rad_to_render_update(
+    rad_to_render: Res<Mutex<Receiver<rad::worker::RadToRender>>>,
+    mut diagnostics: ResMut<Diagnostics>,
+    mut render_status: ResMut<crate::hud::RenderStatus>,
+    mut rotator_system_state: ResMut<RotatorSystemState>,
+    mut fb_state: ResMut<quad_render::RadFrontbufState>,
+) {
+    for cmd in rad_to_render.lock().unwrap().try_iter() {
+        match cmd {
+            rad::worker::RadToRender::IterationDone { num_int, duration } => {
+                diagnostics.add_measurement(
+                    hud::RAD_INT_PER_SECOND,
+                    num_int as f64 / duration.as_secs_f64(),
+                );
+                fb_state.updated = true;
+            }
+            rad::worker::RadToRender::StatusUpdate(text) => {
+                render_status.text = text;
+            }
+            rad::worker::RadToRender::RadReady => {
+                render_status.text = "ready".into();
+                rotator_system_state.run = true;
+            }
+        }
     }
 }
 

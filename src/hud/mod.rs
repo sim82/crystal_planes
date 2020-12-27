@@ -2,6 +2,8 @@ use bevy::{
     diagnostic::{DiagnosticId, Diagnostics, FrameTimeDiagnosticsPlugin},
     prelude::*,
 };
+pub const RAD_INT_PER_SECOND: DiagnosticId =
+    DiagnosticId::from_u128(337040787172757619024841343456040760896);
 
 mod button;
 
@@ -146,7 +148,7 @@ fn setup_hud_system(
                 })
                 .with(HudSrc::Diagnostics(
                     "Int/s".into(),
-                    super::quad_render::RAD_INT_PER_SECOND,
+                    RAD_INT_PER_SECOND,
                     true,
                 ))
                 .spawn(TextBundle {
