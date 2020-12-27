@@ -9,7 +9,7 @@ use std::sync::{
 
 use super::{ffs, simd};
 use rayon::prelude::*;
-
+use tracing::info;
 pub struct RadBuffer {
     pub r: Vec<f32>,
     pub g: Vec<f32>,
@@ -297,7 +297,7 @@ impl RadThread for RadData {
                         num_single += ext_simd.single.len();
                         extents_simd.push(ext_simd);
                     }
-                    println!(
+                    info!(
                         "extents:\n16 * {} = {}\n8 * {} = {}\n4 * {} = {}\n1 * {}",
                         num16,
                         num16 * 16,
@@ -346,7 +346,7 @@ impl RadThread for RadData {
                 }
                 for id in light_updates.iter() {
                     if let Some((pos, color)) = self.point_lights.get(id) {
-                        let pt = crate::util::ProfTimer::new("apply_pointlight");
+                        // let pt = crate::util::ProfTimer::new("apply_pointlight");
                         apply_pointlight(
                             &mut self.emit,
                             &self.diffuse,
@@ -378,7 +378,7 @@ impl RadThread for RadData {
                     duration: rad_start.elapsed(),
                 }) {
                     Err(SendError(_)) => {
-                        println!("channel disconnected. terminate rad thread");
+                        info!("channel disconnected. terminate rad thread");
                         break;
                     }
                     Ok(_) => (),

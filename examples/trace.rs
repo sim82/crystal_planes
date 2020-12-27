@@ -24,7 +24,7 @@ fn main() {
     let dbm = DenseBlockmap::from_bitmap(&*bm);
     let cells: Vec<_> = bm
         .cell_iter()
-        .map(|((x, y, z), v)| Point3i::new(x as i32, y as i32, z as i32))
+        .map(|((x, y, z), _)| Point3i::new(x as i32, y as i32, z as i32))
         .collect();
 
     // bench(&*bm, &cells[..]);

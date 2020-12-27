@@ -8,7 +8,7 @@ use bevy::{
     reflect::TypeUuid,
     render::{
         mesh::{shape, VertexAttributeValues},
-        pipeline::{PipelineDescriptor, PipelineSpecialization, RenderPipeline},
+        pipeline::{PipelineDescriptor, RenderPipeline},
         render_graph::{base, AssetRenderResourcesNode, RenderGraph},
         renderer::RenderResources,
         shader::{ShaderStage, ShaderStages},
@@ -23,9 +23,7 @@ pub struct RotatorSystemState {
 
 #[derive(RenderResources, Default, TypeUuid)]
 #[uuid = "213b8673-5cf1-441e-b98d-4602a612567e"]
-struct MyMaterial {
-    pub color: Color,
-}
+struct MyMaterial {}
 const VERTEX_SHADER: &str = r#"
 #version 450
 layout(location = 0) in vec3 Vertex_Position;
@@ -48,9 +46,6 @@ void main() {
 const FRAGMENT_SHADER: &str = r#"
 #version 450
 layout(location = 0) out vec4 o_Target;
-layout(set = 1, binding = 1) uniform MyMaterial_color {
-    vec4 color;
-};
 layout(location = 0) in vec4 Vertex_Color;
 
 void main() {
@@ -85,7 +80,7 @@ fn setup(
         vertex: shaders.add(Shader::from_glsl(ShaderStage::Vertex, VERTEX_SHADER)),
         fragment: Some(shaders.add(Shader::from_glsl(ShaderStage::Fragment, FRAGMENT_SHADER))),
     }));
-
+    let render_pipeline = RenderPipeline::new(pipeline_handle);
     // Add an AssetRenderResourcesNode to our Render Graph. This will bind MyMaterial resources to our shader
     render_graph.add_system_node(
         "my_material",
@@ -96,26 +91,6 @@ fn setup(
     render_graph
         .add_node_edge("my_material", base::node::MAIN_PASS)
         .unwrap();
-
-    // let pipelines = RenderPipelines::from_pipelines(vec![RenderPipeline::specialized(
-    //     pipeline_handle,
-    //     // NOTE: in the future you wont need to manually declare dynamic bindings
-    //     PipelineSpecialization {
-    //         dynamic_bindings: vec![
-    //             // Transform
-    //             DynamicBinding {
-    //                 bind_group: 1,
-    //                 binding: 0,
-    //             },
-    //             // MyMaterial_color
-    //             DynamicBinding {
-    //                 bind_group: 1,
-    //                 binding: 1,
-    //             },
-    //         ],
-    //         ..Default::default()
-    //     },
-    // )]);
 
     // Setup our world
     commands
@@ -177,21 +152,20 @@ fn setup(
     for (ent, plane) in &mut query.iter() {
         plane_entities.insert(plane.buf_index, ent);
     }
-
+    let material = materials.add(MyMaterial {});
     let mut num_planes = 0;
     let mut spawn_mesh = {
         // FIXME: why is type inference for 'planes' broken?
         |position, normal, uv, index, planes: Vec<u32>| {
-            let mut mesh = Mesh::new(bevy::render::pipeline::PrimitiveTopology::TriangleList);
-            //  {
-            //     primitive_topology: bevy::render::pipeline::PrimitiveTopology::TriangleList,
-            //     // attributes: vec![
-            //     //     bevy::render::mesh::VertexAttribute::position(position),
-            //     //     bevy::render::mesh::VertexAttribute::normal(normal),
-            //     //     bevy::render::mesh::VertexAttribute::uv(uv),
-            //     // ],
-            //     indices: Some(index),
-            // };
+            let mut mesh = Mesh::new(bevy::render::pipeline::PrimitiveTopology::TriangleList); //  {
+
+            // info!(
+            //     "spawn mesh {:?}",
+            //     position,
+            //     // normal.len(),
+            //     // uv.len(),
+            //     // index.len()
+            // );
 
             mesh.set_attribute(bevy::render::mesh::Mesh::ATTRIBUTE_POSITION, position);
             mesh.set_attribute(bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL, normal);
@@ -202,14 +176,13 @@ fn setup(
             commands
                 .spawn(MeshBundle {
                     mesh: mesh_handle.clone(),
-                    render_pipelines: RenderPipelines::from_pipelines(vec![RenderPipeline::new(
-                        pipeline_handle.clone(),
-                    )]),
+                    render_pipelines: RenderPipelines::from_pipelines(
+                        vec![render_pipeline.clone()],
+                    ),
+
                     ..Default::default()
                 })
-                .with(materials.add(MyMaterial {
-                    color: Color::rgb(0.0, 0.0, 1.0),
-                }))
+                .with(material.clone())
                 .with(QuadRenderMesh);
 
             for p in planes.iter() {
@@ -288,30 +261,6 @@ fn setup(
         planes,
     );
 }
-
-// fn _blink_system(mut meshes: ResMut<Assets<Mesh>>, plane: &Plane) {
-//     // println!("blink");
-//     let mesh = meshes
-//         .get_mut(&plane.mesh_handle)
-//         .expect("bad mesh_handle in Plane entitiy");
-
-//     for a in &mut mesh.attributes {
-//         if a.name == "Vertex_Normal" {
-//             match &mut a.values {
-//                 VertexAttributeValues::Float3(ref mut vs) => {
-//                     let color =
-//                         Color::rgb(thread_rng().gen(), thread_rng().gen(), thread_rng().gen());
-//                     for i in plane.indices.iter() {
-//                         vs[*i as usize][0] = color.r;
-//                         vs[*i as usize][1] = color.g;
-//                         vs[*i as usize][2] = color.b;
-//                     }
-//                 }
-//                 _ => panic!("expected Vertex_Normal to be Float3"),
-//             }
-//         }
-//     }
-// }
 
 fn apply_frontbuf(
     front_buf: Res<rad::worker::FrontBuf>,

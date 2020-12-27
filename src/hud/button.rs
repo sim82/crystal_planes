@@ -1,4 +1,4 @@
-use bevy::{ecs::WorldQuery, prelude::*};
+use bevy::prelude::*;
 
 /// This example illustrates how to create a button that changes color and text based on its interaction state.
 

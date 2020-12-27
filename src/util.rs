@@ -2,6 +2,7 @@
 use crate::map::Bitmap;
 use crate::math::prelude::*;
 use bevy::math::prelude::*;
+use tracing::info;
 
 // OPT-REMARK: generic purely for performance reasons (yields around ~30% overall improvement)
 pub fn occluded<B: Bitmap>(p0: Point3i, p1: Point3i, solid: &B) -> bool {
@@ -216,7 +217,7 @@ impl ProfTimer {
 
 impl Drop for ProfTimer {
     fn drop(&mut self) {
-        println!(
+        info!(
             "pt: {} {:?} {:?}",
             self.name,
             std::thread::current().id(),

@@ -8,7 +8,9 @@ edition = "2018"
 [dependencies]
 # bevy = {git="https://github.com/bevyengine/bevy.git", branch="master"}
 arrayvec = "^0.5"
-bevy = "^0.4"
+# bevy = "^0.4"
+bevy={path="../bevy"}
+
 # bevy_fly_camera={git="https://github.com/sim82/bevy_fly_camera.git", branch="master"}
 bevy_fly_camera={path="../bevy_fly_camera"}
 
@@ -21,3 +23,4 @@ rodio = "*"
 serde = { version = "1", features = ["derive"] }
 packed_simd_2 = { version = "^0.3" }
 md5 = "^0.7"
+tracing = "*"

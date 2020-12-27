@@ -1,4 +1,3 @@
-use crate::util;
 use bevy::math::prelude::*;
 
 use crate::map::{Bitmap, Dir, Plane, PlanesSep};

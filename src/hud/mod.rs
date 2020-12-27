@@ -24,6 +24,7 @@ impl Default for RenderStatus {
     }
 }
 
+#[allow(dead_code)]
 pub enum HudSrc {
     Diagnostics(String, DiagnosticId, bool),
     RenderStatus,

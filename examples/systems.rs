@@ -23,15 +23,15 @@ fn main() {
 
 #[derive(Default)]
 struct Res1();
-fn system1(res1: Res<Res1>) {
+fn system1(_res1: Res<Res1>) {
     println!("system1 begin {:?}", std::thread::current().id());
-    std::thread::sleep_ms(100);
+    std::thread::sleep(std::time::Duration::from_secs(1));
     println!("system1 end");
 }
 
-fn system2(res1: Res<Res1>) {
+fn system2(_res1: Res<Res1>) {
     println!("system2 begin {:?}", std::thread::current().id());
-    std::thread::sleep_ms(10);
+    std::thread::sleep(std::time::Duration::from_secs(1));
 
     println!("system2 end");
 }

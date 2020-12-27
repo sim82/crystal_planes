@@ -4,7 +4,7 @@ use std::sync::{
 };
 
 #[allow(unused_imports)]
-use bevy::diagnostic::PrintDiagnosticsPlugin;
+use bevy::diagnostic::DiagnosticsPlugin;
 
 use bevy::{
     diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, render::mesh::shape, winit::WinitConfig,
@@ -25,6 +25,7 @@ fn main() {
         .with_system(setup.system())
         .with_system(setup_bevy.system());
     App::build()
+        // .add_stage_after(stage::UPDATE, "background", SystemStage::parallel())
         .add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         // .add_plugin(PrintDiagnosticsPlugin::default())
@@ -44,6 +45,9 @@ fn main() {
         .add_resource(WinitConfig {
             return_from_run: true,
         })
+        // .add_system_to_stage("background", test_background.system())
+        // .add_system_to_stage("background", test_background2.system())
+        // .add_plugin(mesh_custom_attribute::TestPlugin)
         // .add_system(swap_buffers.system())
         .run();
 
@@ -269,3 +273,12 @@ fn demo_system(
             .unwrap();
     }
 }
+
+// fn test_background() {
+//     info!("background");
+//     // std::thread::sleep(std::time::Duration::from_secs(1))
+// }
+
+// fn test_background2() {
+//     info!("background2");
+// }

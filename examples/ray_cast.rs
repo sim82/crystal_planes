@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_assignments)]
 use bevy::prelude::*;
 use crystal_planes::math::prelude::*;
 use crystal_planes::octree;
@@ -15,8 +16,8 @@ fn main() {
 fn setup(
     commands: &mut Commands,
     mut octants: ResMut<octree::Octants>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    _meshes: ResMut<Assets<Mesh>>,
+    _materials: ResMut<Assets<StandardMaterial>>,
     mut vis_info: ResMut<octree_render::OctreeVisInfo>,
 ) {
     vis_info.show_level = Some(0);

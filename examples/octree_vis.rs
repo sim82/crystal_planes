@@ -1,10 +1,4 @@
-use bevy::{
-    prelude::*,
-    render::{
-        camera::{Camera, VisibleEntities},
-        mesh::shape,
-    },
-};
+use bevy::{prelude::*, render::mesh::shape};
 use crystal_planes::octree::{self, util::OctreeLoad};
 use rand::{thread_rng, Rng};
 
@@ -19,7 +13,7 @@ fn main() {
 }
 
 struct OctreeLevel {
-    level: u32,
+    pub level: u32,
 }
 
 fn setup(
@@ -135,18 +129,18 @@ fn setup(
         });
 }
 
-fn camera_order_color_system(
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut camera_query: Query<(&Camera, &VisibleEntities)>,
-    material_query: Query<&Handle<StandardMaterial>>,
-) {
-    for (_camera, visible_entities) in &mut camera_query.iter() {
-        for visible_entity in visible_entities.iter() {
-            if let Ok(material_handle) = material_query.get(visible_entity.entity) {
-                let material = materials.get_mut(material_handle).unwrap();
-                let value = 1.0 - (visible_entity.order.0 - 10.0) / 7.0;
-                material.albedo = Color::rgb(value, value, value);
-            }
-        }
-    }
-}
+// fn camera_order_color_system(
+//     mut materials: ResMut<Assets<StandardMaterial>>,
+//     mut camera_query: Query<(&Camera, &VisibleEntities)>,
+//     material_query: Query<&Handle<StandardMaterial>>,
+// ) {
+//     for (_camera, visible_entities) in &mut camera_query.iter() {
+//         for visible_entity in visible_entities.iter() {
+//             if let Ok(material_handle) = material_query.get(visible_entity.entity) {
+//                 let material = materials.get_mut(material_handle).unwrap();
+//                 let value = 1.0 - (visible_entity.order.0 - 10.0) / 7.0;
+//                 material.albedo = Color::rgb(value, value, value);
+//             }
+//         }
+//     }
+// }

@@ -1,6 +1,3 @@
-use std::time::Instant;
-
-use crate::map;
 use crate::map::Bitmap;
 use crate::math::prelude::*;
 use crate::util;
@@ -13,7 +10,6 @@ pub struct DenseBlockmap {
     xyi: usize,
 
     blocks: Vec<u64>,
-    tmp: bool,
 }
 
 struct Iter<'a> {
@@ -76,7 +72,6 @@ impl DenseBlockmap {
             xi,
             xyi: xi * yi,
             blocks: vec![0; xi * yi * zi],
-            tmp: false,
         }
     }
     pub fn from_bitmap(bm: &dyn Bitmap) -> Self {
@@ -232,41 +227,47 @@ impl Bitmap for DenseBlockmap {
     }
 }
 
-#[test]
-fn test_basic() {
-    let mut bm = DenseBlockmap::new(1024, 1024, 1024);
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::map;
+    use std::time::Instant;
 
-    bm.set(666, 123, 731, true);
-    assert!(bm.get(666, 123, 731).unwrap());
-    assert!(!bm.get(666, 123, 732).unwrap());
-    assert!(!bm.get(667, 123, 732).unwrap());
-    assert!(!bm.get(666, 124, 732).unwrap());
-}
+    #[test]
+    fn test_basic() {
+        let mut bm = DenseBlockmap::new(1024, 1024, 1024);
 
-fn bench(bm: &dyn map::Bitmap, cells: &[Point3i]) {
-    let t0 = Instant::now();
-    let start = Point3i::new(40, 180, 40);
-    let mut count = 0;
-    let mut count_all = 0;
-    for p in cells.iter() {
-        count_all += 1;
-        if bm.occluded(Point3i::new(p.x(), p.y(), p.z()), start, None, None, true) {
-            count += 1;
+        bm.set(666, 123, 731, true);
+        assert!(bm.get(666, 123, 731).unwrap());
+        assert!(!bm.get(666, 123, 732).unwrap());
+        assert!(!bm.get(667, 123, 732).unwrap());
+        assert!(!bm.get(666, 124, 732).unwrap());
+    }
+    fn bench(bm: &dyn map::Bitmap, cells: &[Point3i]) {
+        let t0 = Instant::now();
+        let start = Point3i::new(40, 180, 40);
+        let mut count = 0;
+        let mut count_all = 0;
+        for p in cells.iter() {
+            count_all += 1;
+            if bm.occluded(Point3i::new(p.x(), p.y(), p.z()), start, None, None, true) {
+                count += 1;
+            }
         }
+        println!("count: {} {} {:?}", count, count_all, t0.elapsed());
     }
-    println!("count: {} {} {:?}", count, count_all, t0.elapsed());
-}
-#[test]
-fn trace() {
-    let bm = map::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
-    let dbm = DenseBlockmap::from_bitmap(&*bm);
+    #[test]
+    fn trace() {
+        let bm = map::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
+        let dbm = DenseBlockmap::from_bitmap(&*bm);
 
-    let mut cells = Vec::new();
-    for ((x, y, z), v) in bm.cell_iter() {
-        assert_eq!(dbm.get(x, y, z).unwrap(), v);
-        cells.push(Point3i::new(x as i32, y as i32, z as i32));
+        let mut cells = Vec::new();
+        for ((x, y, z), v) in bm.cell_iter() {
+            assert_eq!(dbm.get(x, y, z).unwrap(), v);
+            cells.push(Point3i::new(x as i32, y as i32, z as i32));
+        }
+
+        bench(&*bm, &cells[..]);
+        bench(&dbm, &cells[..]);
     }
-
-    bench(&*bm, &cells[..]);
-    bench(&dbm, &cells[..]);
 }
