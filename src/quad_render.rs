@@ -256,7 +256,7 @@ pub struct RadFrontbufState {
     pub updated: bool,
 }
 fn apply_frontbuf(
-    front_buf: Res<rad::worker::FrontBuf>,
+    front_buf: Res<rad::data::FrontBuf>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut fb_state: ResMut<RadFrontbufState>,
     query: Query<(&rad::PlaneIndex, &Plane)>,

@@ -1,93 +1,17 @@
 use crate::map::{self, PlaneScene};
-use crate::math::prelude::*;
-use crate::util::vec_mul;
-use bevy::prelude::*;
-use std::sync::{
-    mpsc::Receiver, mpsc::SendError, mpsc::Sender, Arc, Mutex, RwLock, RwLockReadGuard,
-    RwLockWriteGuard,
-};
 
-use super::{ffs, simd};
+use bevy::prelude::*;
+use std::sync::{mpsc::Receiver, mpsc::SendError, mpsc::Sender, Mutex};
+
+use super::{
+    com::{RadToRender, RenderToRad},
+    data::{BackBuf, FrontBuf, RadBuffer},
+    ffs,
+    light::apply_pointlight,
+    simd,
+};
 use rayon::prelude::*;
 use tracing::info;
-pub struct RadBuffer {
-    pub r: Vec<f32>,
-    pub g: Vec<f32>,
-    pub b: Vec<f32>,
-}
-
-impl RadBuffer {
-    pub fn new_with(size: usize, r: f32, g: f32, b: f32) -> Self {
-        RadBuffer {
-            r: vec![r; size],
-            g: vec![g; size],
-            b: vec![b; size],
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct FrontBuf(Arc<RwLock<RadBuffer>>);
-pub struct BackBuf(pub RadBuffer);
-
-impl FrontBuf {
-    pub fn new(buf: RadBuffer) -> Self {
-        FrontBuf(Arc::new(RwLock::new(buf)))
-    }
-    pub fn read(&self) -> RwLockReadGuard<RadBuffer> {
-        self.0.read().unwrap()
-    }
-    pub fn write(&self) -> RwLockWriteGuard<RadBuffer> {
-        self.0.write().unwrap()
-    }
-}
-
-pub enum RenderToRad {
-    PointLight(usize, Vec3, Vec3),
-    SetStripeColors(Vec3, Vec3),
-}
-
-pub enum RadToRender {
-    IterationDone {
-        num_int: usize,
-        duration: std::time::Duration,
-    },
-    StatusUpdate(String),
-    RadReady,
-}
-
-pub fn apply_pointlight(
-    emit: &mut Vec<Vec3>,
-    diffuse: &Vec<Vec3>,
-    plane_scene: &PlaneScene,
-    pos: &Vec3,
-    color: &Vec3,
-) {
-    let light_pos_i = Vec3i::from_vec3(&pos);
-    for (i, plane) in plane_scene.planes.planes_iter().enumerate() {
-        let trace_pos = plane.cell + plane.dir.get_normal_i(); // s
-
-        let d = (*pos - trace_pos.into_vec3()).normalize();
-        let len = 1f32;
-        // normalize: make directional light
-        // let len = d.length();
-        // // d /= len;
-        let dot = d.dot(plane.dir.get_normal());
-
-        let diff_color = diffuse[i];
-        // OPT-NOTE: tracing from plane to light has better change of early hit an allows for early termination if ray leaves map volume
-        if !plane_scene
-            .blockmap
-            .occluded(trace_pos, light_pos_i, None, None, true)
-            && dot > 0f32
-        {
-            // println!("light");
-            emit[i] = vec_mul(&diff_color, &color) * dot * (5f32 / (2f32 * 3.1415f32 * len * len));
-        } else {
-            emit[i] = Vec3::new(0f32, 0f32, 0f32);
-        }
-    }
-}
 
 pub fn spawn_rad_update(
     plane_scene: PlaneScene,
@@ -459,24 +383,6 @@ impl RadData {
         // holding only a read lock to front_buf, so gfx code can concurrently access it without blocking.
         let front = self.front_buf.read();
 
-        // let rad_out: Vec<(f32, f32, f32)> = (0..self.num_planes)
-        //     .into_par_iter()
-        //     .map(|i| {
-        //         extents_simd[i].collect(
-        //             i,
-        //             (&front.r[..], &front.g[..], &front.b[..]),
-        //             self.emit[i],
-        //             self.diffuse[i],
-        //         )
-        //     })
-        //     .collect();
-
-        // for (i, (rad_r, rad_g, rad_b)) in rad_out.iter().enumerate() {
-        //     self.back_buf.0.r[i] = *rad_r;
-        //     self.back_buf.0.g[i] = *rad_g;
-        //     self.back_buf.0.b[i] = *rad_b;
-        // }
-
         let r = &mut self.back_buf.0.r;
         let g = &mut self.back_buf.0.g;
         let b = &mut self.back_buf.0.b;
@@ -499,10 +405,4 @@ impl RadData {
                 *b = rad.2;
             });
     }
-
-    // fn send_status_update<T: Into<String>>(&mut self, text: T) {
-    //     self.self.rad_to_render_channel
-    //         .send(RadToRender::StatusUpdate(text)
-    //         .unwrap();
-    // }
 }

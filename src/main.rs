@@ -178,7 +178,7 @@ impl Default for PointLight {
 
 fn _light_move_system(
     keyboard_input: Res<Input<KeyCode>>,
-    rad_update_channel: Res<Mutex<Sender<rad::worker::RenderToRad>>>,
+    rad_update_channel: Res<Mutex<Sender<rad::com::RenderToRad>>>,
     mut point_light: Mut<PointLight>,
 ) {
     let mut m = Vec3::zero();
@@ -200,7 +200,7 @@ fn _light_move_system(
         rad_update_channel
             .lock()
             .unwrap()
-            .send(rad::worker::RenderToRad::PointLight(
+            .send(rad::com::RenderToRad::PointLight(
                 0,
                 point_light.pos,
                 point_light.color,
@@ -217,7 +217,7 @@ struct LightUpdateState {
 
 fn light_update_system(
     mut state: ResMut<LightUpdateState>,
-    rad_update_channel: Res<Mutex<Sender<rad::worker::RenderToRad>>>,
+    rad_update_channel: Res<Mutex<Sender<rad::com::RenderToRad>>>,
     query: Query<(&RadPointLight, &GlobalTransform)>, // Mutated<GlobalTransform>)>,
                                                       // _: Mutated<Position>
 ) {
@@ -235,11 +235,7 @@ fn light_update_system(
         rad_update_channel
             .lock()
             .unwrap()
-            .send(rad::worker::RenderToRad::PointLight(
-                0,
-                pos,
-                rad_light.color,
-            ))
+            .send(rad::com::RenderToRad::PointLight(0, pos, rad_light.color))
             .unwrap();
     }
 }
@@ -261,14 +257,14 @@ fn rand_color(min: f32, max: f32) -> Vec3 {
 fn demo_system(
     mut state: ResMut<DemoSystemState>,
     time: Res<Time>,
-    rad_update_channel: Res<Mutex<Sender<rad::worker::RenderToRad>>>,
+    rad_update_channel: Res<Mutex<Sender<rad::com::RenderToRad>>>,
 ) {
     state.cycle_timer.tick(time.delta_seconds());
     if state.cycle && state.cycle_timer.just_finished() {
         rad_update_channel
             .lock()
             .unwrap()
-            .send(rad::worker::RenderToRad::SetStripeColors(
+            .send(rad::com::RenderToRad::SetStripeColors(
                 rand_color(0f32, 180f32),
                 rand_color(180f32, 360f32),
             ))
@@ -287,7 +283,7 @@ fn setup_diagnostic_system(mut diagnostics: ResMut<Diagnostics>) {
 }
 
 fn rad_to_render_update(
-    rad_to_render: Res<Mutex<Receiver<rad::worker::RadToRender>>>,
+    rad_to_render: Res<Mutex<Receiver<rad::com::RadToRender>>>,
     mut diagnostics: ResMut<Diagnostics>,
     mut render_status: ResMut<crate::hud::RenderStatus>,
     mut rotator_system_state: ResMut<RotatorSystemState>,
@@ -295,17 +291,17 @@ fn rad_to_render_update(
 ) {
     for cmd in rad_to_render.lock().unwrap().try_iter() {
         match cmd {
-            rad::worker::RadToRender::IterationDone { num_int, duration } => {
+            rad::com::RadToRender::IterationDone { num_int, duration } => {
                 diagnostics.add_measurement(
                     hud::RAD_INT_PER_SECOND,
                     num_int as f64 / duration.as_secs_f64(),
                 );
                 fb_state.updated = true;
             }
-            rad::worker::RadToRender::StatusUpdate(text) => {
+            rad::com::RadToRender::StatusUpdate(text) => {
                 render_status.text = text;
             }
-            rad::worker::RadToRender::RadReady => {
+            rad::com::RadToRender::RadReady => {
                 render_status.text = "ready".into();
                 rotator_system_state.run = true;
             }
