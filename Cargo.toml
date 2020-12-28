@@ -8,11 +8,11 @@ edition = "2018"
 [dependencies]
 # bevy = {git="https://github.com/bevyengine/bevy.git", branch="master"}
 arrayvec = "^0.5"
-# bevy = "^0.4"
-bevy={path="../bevy"}
+bevy = "^0.4"
+#bevy={path="../bevy"}
 
-# bevy_fly_camera={git="https://github.com/sim82/bevy_fly_camera.git", branch="master"}
-bevy_fly_camera={path="../bevy_fly_camera"}
+bevy_fly_camera={git="https://github.com/sim82/bevy_fly_camera.git", branch="master"}
+#bevy_fly_camera={path="../bevy_fly_camera"}
 
 bincode = "*"
 image = "*"

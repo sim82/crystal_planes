@@ -11,6 +11,7 @@ use bevy::{
         shader::{ShaderStage, ShaderStages},
     },
 };
+pub const ATTRIBUTE_COLOR: &'static str = "Vertex_Color";
 
 // FIXME: this is only defined here because apply_frontbuf directly needs to modify it. Implementation should be moved from main.rs
 #[derive(Default)]
@@ -24,7 +25,7 @@ struct MyMaterial {}
 const VERTEX_SHADER: &str = r#"
 #version 450
 layout(location = 0) in vec3 Vertex_Position;
-layout(location = 1) in vec3 Vertex_Normal;
+layout(location = 1) in vec3 Vertex_Color;
 layout(set = 0, binding = 0) uniform Camera {
     mat4 ViewProj;
 };
@@ -32,21 +33,21 @@ layout(set = 1, binding = 0) uniform Transform {
     mat4 Model;
 };
 
-layout(location = 0) out vec4 Vertex_Color;
+layout(location = 0) out vec4 vcolor;
 
 void main() {
     gl_Position = ViewProj * Model * vec4(Vertex_Position, 1.0);
-    Vertex_Color = vec4(Vertex_Normal, 1.0);
+    vcolor = vec4(Vertex_Color, 1.0);
 }
 "#;
 
 const FRAGMENT_SHADER: &str = r#"
 #version 450
 layout(location = 0) out vec4 o_Target;
-layout(location = 0) in vec4 Vertex_Color;
+layout(location = 0) in vec4 vcolor;
 
 void main() {
-    o_Target = Vertex_Color;
+    o_Target = vcolor;
     //o_Target = color;
 }
 "#;
@@ -137,10 +138,7 @@ fn setup(
         // println!("spawn");
 
         meshes_tmp.push((
-            Mesh::from(shape::Quad {
-                size: Vec2::new(2.0, 2.0),
-                flip: false,
-            }),
+            quad_mesh(),
             Mat4::from_translation(point.into_vec3() * 0.25) * plane_trans,
         ));
     }
@@ -153,7 +151,7 @@ fn setup(
     let mut num_planes = 0;
     let mut spawn_mesh = {
         // FIXME: why is type inference for 'planes' broken?
-        |position, normal, uv, index, planes: Vec<u32>| {
+        |position, color, index, planes: Vec<u32>| {
             let mut mesh = Mesh::new(bevy::render::pipeline::PrimitiveTopology::TriangleList); //  {
 
             // info!(
@@ -165,8 +163,7 @@ fn setup(
             // );
 
             mesh.set_attribute(bevy::render::mesh::Mesh::ATTRIBUTE_POSITION, position);
-            mesh.set_attribute(bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL, normal);
-            mesh.set_attribute(bevy::render::mesh::Mesh::ATTRIBUTE_UV_0, uv);
+            mesh.set_attribute(ATTRIBUTE_COLOR, color);
             mesh.set_indices(Some(index));
 
             let mesh_handle = meshes.add(mesh);
@@ -201,23 +198,20 @@ fn setup(
     };
 
     let mut position = Vec::new();
-    let mut normal = Vec::new();
-    let mut uv = Vec::new();
+    let mut color = Vec::new();
     let mut index = Vec::new();
     let mut planes = Vec::new();
     for (mesh, trans) in meshes_tmp.iter() {
         if position.len() > 256 * 256 - 4 {
             spawn_mesh(
                 bevy::render::mesh::VertexAttributeValues::Float3(position),
-                bevy::render::mesh::VertexAttributeValues::Float3(normal),
-                bevy::render::mesh::VertexAttributeValues::Float2(uv),
+                bevy::render::mesh::VertexAttributeValues::Float3(color),
                 bevy::render::mesh::Indices::U32(index),
                 planes,
             );
 
             position = Vec::new();
-            normal = Vec::new();
-            uv = Vec::new();
+            color = Vec::new();
             index = Vec::new();
             planes = Vec::new();
         }
@@ -234,14 +228,14 @@ fn setup(
             }
             _ => panic!("expected Vertex_Position to be Float3"),
         };
-        match mesh.attribute(bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL) {
-            Some(VertexAttributeValues::Float3(vs)) => normal.append(&mut vs.clone()),
-            _ => panic!("expected Vertex_Normal to be Float3"),
+        match mesh.attribute(ATTRIBUTE_COLOR) {
+            Some(VertexAttributeValues::Float3(vs)) => color.append(&mut vs.clone()),
+            _ => panic!("expected Vertex_Color to be Float3"),
         };
-        match mesh.attribute(bevy::render::mesh::Mesh::ATTRIBUTE_UV_0) {
-            Some(VertexAttributeValues::Float2(vs)) => uv.append(&mut vs.clone()),
-            _ => panic!("expected Vertex_Uv to be Float2"),
-        };
+        // match mesh.attribute(bevy::render::mesh::Mesh::ATTRIBUTE_UV_0) {
+        //     Some(VertexAttributeValues::Float2(vs)) => uv.append(&mut vs.clone()),
+        //     _ => panic!("expected Vertex_Uv to be Float2"),
+        // };
 
         match mesh.indices() {
             Some(bevy::render::mesh::Indices::U32(indices)) => {
@@ -252,8 +246,7 @@ fn setup(
     }
     spawn_mesh(
         bevy::render::mesh::VertexAttributeValues::Float3(position),
-        bevy::render::mesh::VertexAttributeValues::Float3(normal),
-        bevy::render::mesh::VertexAttributeValues::Float2(uv),
+        bevy::render::mesh::VertexAttributeValues::Float3(color),
         bevy::render::mesh::Indices::U32(index),
         planes,
     );
@@ -286,17 +279,14 @@ fn apply_frontbuf(
         if mesh_handle != plane.mesh_handle {
             // apply updated new_vs to current mesh (if Some)
             if let Some(mesh) = meshes.get_mut(&mesh_handle) {
-                mesh.set_attribute(
-                    bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL,
-                    VertexAttributeValues::Float3(new_vs),
-                );
+                mesh.set_attribute(ATTRIBUTE_COLOR, VertexAttributeValues::Float3(new_vs));
             }
             // get next mesh and init new_vs
             mesh_handle = plane.mesh_handle.clone();
             new_vs = match meshes
                 .get(&mesh_handle)
                 .expect("missing mesh referenced by plane")
-                .attribute(bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL)
+                .attribute(ATTRIBUTE_COLOR)
             {
                 // allocate new_vs using size of existing attribute-array (OPT-REMARK: assuming this is more efficient than cloning it... in-place update would be nice)
                 Some(VertexAttributeValues::Float3(vs)) => vec![[0f32, 0f32, 0f32]; vs.len()],
@@ -312,11 +302,25 @@ fn apply_frontbuf(
     }
     // apply final updated new_vs to last mesh_opt (if Some)
     if let Some(mesh) = meshes.get_mut(&mesh_handle) {
-        mesh.set_attribute(
-            bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL,
-            VertexAttributeValues::Float3(new_vs),
-        );
+        mesh.set_attribute(ATTRIBUTE_COLOR, VertexAttributeValues::Float3(new_vs));
     }
+}
+
+fn quad_mesh() -> Mesh {
+    let mut mesh = Mesh::from(shape::Quad {
+        size: Vec2::new(2.0, 2.0),
+        flip: false,
+    });
+    mesh.set_attribute(
+        ATTRIBUTE_COLOR,
+        VertexAttributeValues::from(vec![
+            [0.0, 0.0, 0.5],
+            [0.0, 0.0, 0.5],
+            [0.0, 0.0, 0.5],
+            [0.0, 0.0, 0.5],
+        ]),
+    );
+    mesh
 }
 
 #[derive(Default)]
