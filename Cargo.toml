@@ -24,3 +24,9 @@ serde = { version = "1", features = ["derive"] }
 packed_simd_2 = { version = "^0.3" }
 md5 = "^0.7"
 tracing = "*"
+
+# [profile.dev.package.bevy]
+# opt-level = 1
+
+[profile.dev]
+opt-level = 2
