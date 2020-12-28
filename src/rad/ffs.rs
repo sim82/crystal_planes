@@ -1,11 +1,13 @@
 use bevy::math::prelude::*;
 
-use crate::map::{Bitmap, Dir, Plane, PlanesSep};
+use crate::map::{Bitmap, Dir, Plane, PlaneScene, PlanesSep};
 use image::ImageBuffer;
 use std::{
     cmp::Ordering,
     fmt::Debug,
     io::{BufReader, BufWriter},
+    sync::Arc,
+    vec::IntoIter,
 };
 fn normal_cull(pl1: &Plane, pl2: &Plane) -> bool {
     let d1 = pl1.dir;
@@ -130,6 +132,76 @@ pub fn generate_formfactors(
         println!("generated formfactors");
     });
     recv
+}
+
+pub struct FormfactorBuildIterator {
+    planes: Vec<Plane>,
+    plane_num: usize,
+    bitmap: Arc<Box<dyn Bitmap + Send + Sync>>,
+}
+impl FormfactorBuildIterator {
+    pub fn from_plane_scene(scene: &PlaneScene) -> Self {
+        let planes = scene.planes.planes_iter().cloned().collect::<Vec<Plane>>();
+        FormfactorBuildIterator {
+            planes,
+            plane_num: 0,
+            bitmap: scene.blockmap.clone(),
+        }
+    }
+}
+
+impl Iterator for FormfactorBuildIterator {
+    type Item = Vec<(u32, u32, f32)>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.plane_num >= self.planes.len() {
+            return None;
+        }
+        let plane1 = &self.planes[self.plane_num];
+
+        let mut tmp = Vec::new();
+        let norm1 = plane1.dir.get_normal_i();
+        let norm1f = Vec3::new(norm1.x() as f32, norm1.y() as f32, norm1.z() as f32);
+        let p1f = Vec3::new(
+            plane1.cell.x() as f32,
+            plane1.cell.y() as f32,
+            plane1.cell.z() as f32,
+        );
+        let bitmap = &*self.bitmap;
+        // println!("{}", i);
+        for j in 0..self.plane_num {
+            let plane2 = &self.planes[j];
+            let norm2 = plane2.dir.get_normal_i();
+            let norm2f = Vec3::new(norm2.x() as f32, norm2.y() as f32, norm2.z() as f32);
+            let p2f = Vec3::new(
+                plane2.cell.x() as f32,
+                plane2.cell.y() as f32,
+                plane2.cell.z() as f32,
+            );
+            if normal_cull(plane1, &plane2) {
+                // println!("normal_cull");
+                continue;
+            }
+
+            let dn = (p1f - p2f).normalize();
+            let d2 = (p1f - p2f).length_squared(); // uhm, will the compiler optimize the two calls?
+
+            let ff1 = 0.0f32.max(norm1f.dot(Vec3::zero() - dn));
+            let ff2 = 0.0f32.max(norm2f.dot(dn));
+
+            let ff = (ff1 * ff2) / (3.1415 * d2);
+            let dist_cull = ff < 5e-6;
+
+            if !dist_cull
+                && !bitmap.occluded(plane1.cell, plane2.cell, Some(norm1), Some(norm2), false)
+            {
+                tmp.push((self.plane_num as u32, j as u32, ff));
+                tmp.push((j as u32, self.plane_num as u32, ff));
+            }
+        }
+        self.plane_num += 1;
+        Some(tmp)
+    }
 }
 
 pub fn sort_formfactors(mut ffs: Vec<(u32, u32, f32)>) -> Vec<(u32, u32, f32)> {
