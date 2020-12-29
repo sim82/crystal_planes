@@ -72,68 +72,6 @@ fn normal_cull(pl1: &Plane, pl2: &Plane) -> bool {
 //     ffs
 // }
 
-pub fn generate_formfactors(
-    planes: &PlanesSep,
-    bitmap: std::sync::Arc<Box<dyn Bitmap + Send + Sync>>,
-) -> std::sync::mpsc::Receiver<Vec<(u32, u32, f32)>> {
-    let (send, recv) = std::sync::mpsc::channel();
-
-    let planes = planes.planes_iter().cloned().collect::<Vec<Plane>>();
-    std::thread::spawn(move || {
-        println!("num planes: {}", planes.len());
-        for (i, plane1) in planes.iter().enumerate() {
-            let mut tmp = Vec::new();
-            let norm1 = plane1.dir.get_normal_i();
-            let norm1f = Vec3::new(norm1.x() as f32, norm1.y() as f32, norm1.z() as f32);
-            let p1f = Vec3::new(
-                plane1.cell.x() as f32,
-                plane1.cell.y() as f32,
-                plane1.cell.z() as f32,
-            );
-            // println!("{}", i);
-            for j in 0..i {
-                let plane2 = &planes[j];
-                let norm2 = plane2.dir.get_normal_i();
-                let norm2f = Vec3::new(norm2.x() as f32, norm2.y() as f32, norm2.z() as f32);
-                let p2f = Vec3::new(
-                    plane2.cell.x() as f32,
-                    plane2.cell.y() as f32,
-                    plane2.cell.z() as f32,
-                );
-                if normal_cull(plane1, &plane2) {
-                    // println!("normal_cull");
-                    continue;
-                }
-
-                let dn = (p1f - p2f).normalize();
-                let d2 = (p1f - p2f).length_squared(); // uhm, will the compiler optimize the two calls?
-
-                let ff1 = 0.0f32.max(norm1f.dot(Vec3::zero() - dn));
-                let ff2 = 0.0f32.max(norm2f.dot(dn));
-
-                let ff = (ff1 * ff2) / (3.1415 * d2);
-                let dist_cull = ff < 5e-6;
-
-                if !dist_cull
-                    && !bitmap.occluded(plane1.cell, plane2.cell, Some(norm1), Some(norm2), false)
-                {
-                    tmp.push((i as u32, j as u32, ff));
-                    tmp.push((j as u32, i as u32, ff));
-                }
-            }
-            match send.send(tmp) {
-                Ok(_) => (),
-                Err(std::sync::mpsc::SendError(_)) => {
-                    println!("channel disconnected. terminate ff thread.");
-                    return;
-                }
-            };
-        }
-        println!("generated formfactors");
-    });
-    recv
-}
-
 pub struct FormfactorBuildIterator {
     planes: Vec<Plane>,
     plane_num: usize,
