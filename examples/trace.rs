@@ -11,7 +11,7 @@ fn bench(bm: &dyn map::Bitmap, cells: &[Point3i]) {
     for _ in 0..100 {
         for p in cells.iter() {
             count_all += 1;
-            if bm.occluded(start, Point3i::new(p.x(), p.y(), p.z()), None, None, true) {
+            if bm.occluded(start, Point3i::new(p.x, p.y, p.z), None, None, true) {
                 count += 1;
             }
         }

@@ -3,37 +3,30 @@ use core::ops::*;
 use serde::Serialize;
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Debug, Default, Serialize, Eq, Hash)]
-pub struct Vec3i(pub i32, pub i32, pub i32);
+pub struct Vec3i {
+    pub x: i32,
+    pub y: i32,
+    pub z: i32,
+}
 pub type Point3i = Vec3i;
 
 impl Vec3i {
     pub fn new(x: i32, y: i32, z: i32) -> Vec3i {
-        Vec3i(x, y, z)
+        Vec3i { x, y, z }
     }
 
     pub fn into_vec3(self) -> Vec3 {
-        Vec3::new(self.0 as f32, self.1 as f32, self.2 as f32)
+        Vec3::new(self.x as f32, self.y as f32, self.z as f32)
     }
     pub fn from_vec3(v: &Vec3) -> Self {
-        Vec3i(v.x as i32, v.y as i32, v.z as i32)
+        Vec3i::new(v.x as i32, v.y as i32, v.z as i32)
     }
 
     pub fn zero() -> Vec3i {
-        Vec3i(0, 0, 0)
+        Vec3i { x: 0, y: 0, z: 0 }
     }
     pub fn one() -> Vec3i {
-        Vec3i(1, 1, 1)
-    }
-    pub fn x(&self) -> i32 {
-        self.0
-    }
-
-    pub fn y(&self) -> i32 {
-        self.1
-    }
-
-    pub fn z(&self) -> i32 {
-        self.2
+        Vec3i { x: 1, y: 1, z: 1 }
     }
 }
 
@@ -42,16 +35,20 @@ impl Add for Vec3i {
 
     #[inline]
     fn add(self, other: Self) -> Self {
-        Self(self.0 + other.0, self.1 + other.1, self.2 + other.2)
+        Self {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+        }
     }
 }
 
 impl AddAssign<Vec3i> for Vec3i {
     #[inline]
     fn add_assign(&mut self, other: Vec3i) {
-        self.0 += other.0;
-        self.1 += other.1;
-        self.2 += other.2;
+        self.x += other.x;
+        self.y += other.y;
+        self.z += other.z;
     }
 }
 
@@ -60,16 +57,20 @@ impl Mul<i32> for Vec3i {
 
     #[inline]
     fn mul(self, other: i32) -> Self {
-        Self(self.0 * other, self.1 * other, self.2 * other)
+        Self {
+            x: self.x * other,
+            y: self.y * other,
+            z: self.z * other,
+        }
     }
 }
 
 impl MulAssign<i32> for Vec3i {
     #[inline]
     fn mul_assign(&mut self, other: i32) {
-        self.0 *= other;
-        self.1 *= other;
-        self.2 *= other;
+        self.x *= other;
+        self.y *= other;
+        self.z *= other;
     }
 }
 
@@ -125,7 +126,7 @@ impl<T> From<T> for DisplayWrap<T> {
 impl std::fmt::Display for DisplayWrap<Point3i> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         let DisplayWrap::<Point3i>(v) = self;
-        write!(f, "[{} {} {}]", v.0, v.1, v.2)
+        write!(f, "[{} {} {}]", v.x, v.y, v.z)
     }
 }
 

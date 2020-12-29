@@ -2,7 +2,8 @@
 use crate::map::Bitmap;
 use crate::math::prelude::*;
 use bevy::math::prelude::*;
-use tracing::info;
+use tracing::{info, Span};
+use tracing::{span, Level};
 
 // OPT-REMARK: generic purely for performance reasons (yields around ~30% overall improvement)
 pub fn occluded<B: Bitmap>(p0: Point3i, p1: Point3i, solid: &B) -> bool {
@@ -10,13 +11,13 @@ pub fn occluded<B: Bitmap>(p0: Point3i, p1: Point3i, solid: &B) -> bool {
 
     // println!("{} {}", DisplayWrap::from(p0), DisplayWrap::from(p1));
 
-    let mut x0 = p0.x();
-    let mut y0 = p0.y();
-    let mut z0 = p0.z();
+    let mut x0 = p0.x;
+    let mut y0 = p0.y;
+    let mut z0 = p0.z;
 
-    let mut x1 = p1.x();
-    let mut y1 = p1.y();
-    let mut z1 = p1.z();
+    let mut x1 = p1.x;
+    let mut y1 = p1.y;
+    let mut z1 = p1.z;
 
     //'steep' xy Line, make longest delta x plane
     let swap_xy = (y1 - y0).abs() > (x1 - x0).abs();
@@ -107,13 +108,13 @@ pub fn occluded_from_inside<B: Bitmap>(
 
     // println!("{} {}", DisplayWrap::from(p0), DisplayWrap::from(p1));
 
-    let mut x0 = p0.x();
-    let mut y0 = p0.y();
-    let mut z0 = p0.z();
+    let mut x0 = p0.x;
+    let mut y0 = p0.y;
+    let mut z0 = p0.z;
 
-    let mut x1 = p1.x();
-    let mut y1 = p1.y();
-    let mut z1 = p1.z();
+    let mut x1 = p1.x;
+    let mut y1 = p1.y;
+    let mut z1 = p1.z;
 
     //'steep' xy Line, make longest delta x plane
     let swap_xy = (y1 - y0).abs() > (x1 - x0).abs();
@@ -130,11 +131,11 @@ pub fn occluded_from_inside<B: Bitmap>(
     }
 
     let (min_x, max_x) = if swap_xz {
-        (min.z(), max.z())
+        (min.z, max.z)
     } else if swap_xy {
-        (min.y(), max.y())
+        (min.y, max.y)
     } else {
-        (min.x(), max.x())
+        (min.x, max.x)
     };
 
     // delta is Length in each plane

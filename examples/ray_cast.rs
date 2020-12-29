@@ -95,10 +95,10 @@ fn cast_ray(octants: &octree::Octants, root: octree::OctantId, p: Vec3, d: Vec3)
     let (root_pos, root_size) = root_octant.get_geometry(root_octant.scale);
 
     println!("root_geometry: {:?} {:?}", root_pos, root_size);
-    assert!(root_pos.x() == root_pos.y() && root_pos.x() == root_pos.z());
-    assert!(root_size.x() == root_size.y() && root_size.x() == root_size.z());
-    let bounds_min = root_pos.x() as f32;
-    let bounds_max = (root_pos.x() + root_size.x()) as f32;
+    assert!(root_pos.x == root_pos.y && root_pos.x == root_pos.z);
+    assert!(root_size.x == root_size.y && root_size.x == root_size.z);
+    let bounds_min = root_pos.x as f32;
+    let bounds_max = (root_pos.x + root_size.x) as f32;
     // todo: check if min/max stuff works in 'non 1-2 world' as in paper (or normalize voxel position/size to 1-2 or 0-1 space for casting)
     let mut t_min = max4(
         bounds_max * tx_coef - tx_bias,

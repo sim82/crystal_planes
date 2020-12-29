@@ -1,4 +1,7 @@
-use crate::map::{self, PlaneScene};
+use crate::{
+    map::{self, PlaneScene},
+    util::ProfTimer,
+};
 
 use bevy::prelude::*;
 use std::sync::{mpsc::Receiver, mpsc::SendError, mpsc::Sender, Mutex};
@@ -29,7 +32,7 @@ use tracing::info;
 //         |    no
 //         |     |
 //        yes    v
-//         |   RadBuildFormfactors
+//         |   RadBuildFormfactorsParallel
 //         |     |     |    ^
 //         |    done   |    |
 //         |     |      ----
@@ -83,7 +86,7 @@ impl CommonData {
                 }
                 RenderToRad::SetStripeColors(color1, color2) => {
                     for (i, plane) in self.plane_scene.planes.planes_iter().enumerate() {
-                        if ((plane.cell.y()) / 2) % 2 == 1 {
+                        if ((plane.cell.y) / 2) % 2 == 1 {
                             continue;
                         }
                         self.diffuse[i] = match plane.dir {
@@ -118,22 +121,18 @@ impl RadUpdate for RadTryLoad {
     fn update(mut self: Box<Self>) -> Option<Box<dyn RadUpdate>> {
         self.channels
             .send(RadToRender::StatusUpdate("try load extents.bin".into()));
+
+        let _pt = ProfTimer::new("try read");
         match ffs::Extents::try_load("extents.bin", &self.common.plane_scene.get_digest()) {
             Some(extents) => Some(Box::new(RadGenerateSimdExtents {
                 channels: self.channels,
                 common: self.common,
                 extents,
             })),
-            None => {
-                let iter = ffs::FormfactorBuildIterator::from_plane_scene(&self.common.plane_scene);
-
-                Some(Box::new(RadBuildFormfactors {
-                    channels: self.channels,
-                    common: self.common,
-                    iter,
-                    formfactors: Default::default(),
-                }))
-            }
+            None => Some(Box::new(RadBuildFormfactorsParallel::new(
+                self.channels,
+                self.common,
+            ))),
         }
     }
 
@@ -148,7 +147,17 @@ struct RadBuildFormfactors {
     iter: ffs::FormfactorBuildIterator,
     formfactors: Vec<(u32, u32, f32)>,
 }
-
+impl RadBuildFormfactors {
+    fn new(channels: Channels, common: CommonData) -> Self {
+        let iter = ffs::FormfactorBuildIterator::from_plane_scene(&common.plane_scene);
+        RadBuildFormfactors {
+            channels,
+            common,
+            iter,
+            formfactors: Default::default(),
+        }
+    }
+}
 impl RadUpdate for RadBuildFormfactors {
     fn update(mut self: Box<Self>) -> Option<Box<dyn RadUpdate>> {
         let collect_start = std::time::Instant::now();
@@ -162,22 +171,10 @@ impl RadUpdate for RadBuildFormfactors {
                     self.formfactors.append(&mut v);
                 }
                 None => {
-                    self.channels
-                        .send(RadToRender::StatusUpdate("sort formfactors".into()));
-                    let formfactors = ffs::sort_formfactors(self.formfactors.clone());
-                    self.channels
-                        .send(RadToRender::StatusUpdate("split formfactors".into()));
-                    let formfactors = ffs::split_formfactors(&formfactors);
-                    self.channels
-                        .send(RadToRender::StatusUpdate("build extents".into()));
-                    let extents = ffs::Extents(ffs::to_extents(&formfactors));
-                    self.channels
-                        .send(RadToRender::StatusUpdate("write extents.bin".into()));
-                    extents.write("extents.bin", &self.common.plane_scene.get_digest());
-                    return Some(Box::new(RadGenerateSimdExtents {
+                    return Some(Box::new(RadPostprocessFormfactors {
                         channels: self.channels,
                         common: self.common,
-                        extents,
+                        formfactors: self.formfactors,
                     }));
                 }
             }
@@ -230,6 +227,70 @@ impl RadUpdate for RadBuildFormfactors {
     }
 }
 
+struct RadBuildFormfactorsParallel {
+    channels: Channels,
+    common: CommonData,
+}
+impl RadBuildFormfactorsParallel {
+    fn new(channels: Channels, common: CommonData) -> Self {
+        RadBuildFormfactorsParallel { channels, common }
+    }
+}
+impl RadUpdate for RadBuildFormfactorsParallel {
+    fn update(mut self: Box<Self>) -> Option<Box<dyn RadUpdate>> {
+        self.channels
+            .send(RadToRender::StatusUpdate("build formfactors".into()));
+        let formfactors = ffs::build_formfactors(
+            &self.common.plane_scene.planes,
+            self.common.plane_scene.blockmap.clone(),
+        );
+        rad_preview_on_plain_formfactors(&mut self.channels, &mut self.common, &formfactors);
+
+        Some(Box::new(RadPostprocessFormfactors {
+            channels: self.channels,
+            common: self.common,
+            formfactors,
+        }))
+    }
+}
+
+struct RadPostprocessFormfactors {
+    channels: Channels,
+    common: CommonData,
+    formfactors: Vec<(u32, u32, f32)>,
+}
+
+impl RadUpdate for RadPostprocessFormfactors {
+    fn update(mut self: Box<Self>) -> Option<Box<dyn RadUpdate>> {
+        self.channels
+            .send(RadToRender::StatusUpdate("sort formfactors".into()));
+
+        let formfactors_sep = ffs::sort_formfactors(self.formfactors.clone());
+        rad_preview_on_plain_formfactors(&mut self.channels, &mut self.common, &formfactors_sep);
+        self.channels
+            .send(RadToRender::StatusUpdate("split formfactors".into()));
+        let formfactors = ffs::split_formfactors(&formfactors_sep);
+        rad_preview_on_plain_formfactors(&mut self.channels, &mut self.common, &formfactors_sep);
+        self.channels
+            .send(RadToRender::StatusUpdate("build extents".into()));
+        rad_preview_on_plain_formfactors(&mut self.channels, &mut self.common, &formfactors_sep);
+        let extents = ffs::Extents(ffs::to_extents(&formfactors));
+        self.channels
+            .send(RadToRender::StatusUpdate("write extents.bin".into()));
+        rad_preview_on_plain_formfactors(&mut self.channels, &mut self.common, &formfactors_sep);
+        {
+            let _pt = ProfTimer::new("write extents.bin");
+            extents.write("extents.bin", &self.common.plane_scene.get_digest());
+        }
+        rad_preview_on_plain_formfactors(&mut self.channels, &mut self.common, &formfactors_sep);
+        return Some(Box::new(RadGenerateSimdExtents {
+            channels: self.channels,
+            common: self.common,
+            extents,
+        }));
+    }
+}
+
 struct RadGenerateSimdExtents {
     channels: Channels,
     common: CommonData,
@@ -240,6 +301,7 @@ impl RadUpdate for RadGenerateSimdExtents {
     fn update(mut self: Box<Self>) -> Option<Box<dyn RadUpdate>> {
         self.channels
             .send(RadToRender::StatusUpdate("build simd extents".into()));
+        let _pt = ProfTimer::new("to_simd_extents");
         let mut extents_simd = Vec::new();
         let mut num16 = 0;
         let mut num8 = 0;
@@ -349,7 +411,7 @@ pub fn spawn_rad_update(
     let color1 = Vec3::new(1f32, 0.5f32, 0f32);
     let color2 = Vec3::new(0f32, 1f32, 0f32);
     for (i, plane) in plane_scene.planes.planes_iter().enumerate() {
-        if ((plane.cell.y()) / 2) % 2 == 1 {
+        if ((plane.cell.y) / 2) % 2 == 1 {
             continue;
         }
         diffuse[i] = match plane.dir {
@@ -387,4 +449,56 @@ pub fn spawn_rad_update(
     // rad_data.spawn();
 
     (front_buf_clone, rad_to_render_recv)
+}
+
+fn rad_preview_on_plain_formfactors(
+    channels: &mut Channels,
+    common: &mut CommonData,
+    formfactors: &Vec<(u32, u32, f32)>,
+) {
+    let start = std::time::Instant::now();
+    loop {
+        common.apply_light_updates(&mut channels.render_to_rad);
+        let rad_start = std::time::Instant::now();
+        // println!("iter raw");
+        let r = &mut common.back_buf.0.r;
+        let g = &mut common.back_buf.0.g;
+        let b = &mut common.back_buf.0.b;
+        for i in 0..r.len() {
+            // FIXME: find out how to inplace set all Vec elements.
+            r[i] = 0f32;
+            g[i] = 0f32;
+            b[i] = 0f32;
+        }
+        // let formfactors = &self.formfactors;
+        {
+            let front = common.front_buf.read();
+            // println!("len: {} {}", r.len(), front.r.len());
+            for (i, j, ff) in formfactors.iter() {
+                let i = *i as usize;
+                let j = *j as usize;
+                let diffuse = common.diffuse[i];
+                r[i] += front.r[j] * diffuse.x * *ff;
+                g[i] += front.g[j] * diffuse.y * *ff;
+                b[i] += front.b[j] * diffuse.z * *ff;
+            }
+            for i in 0..r.len() {
+                common.back_buf.0.r[i] += common.emit[i].x;
+                common.back_buf.0.g[i] += common.emit[i].y;
+                common.back_buf.0.b[i] += common.emit[i].z;
+            }
+        }
+        {
+            // swap back and front buffers. should be pretty much instant, so no blocking of gfx code.
+            let mut front = common.front_buf.write();
+            std::mem::swap(&mut *front, &mut common.back_buf.0);
+        }
+        channels.send(RadToRender::IterationDone {
+            duration: rad_start.elapsed(),
+            num_int: formfactors.len(),
+        });
+        if start.elapsed().as_millis() > 100 {
+            break;
+        }
+    }
 }

@@ -1,3 +1,5 @@
+use std::sync::Mutex;
+
 use super::ffs;
 use bevy::math::prelude::*;
 use packed_simd_2::{f32x16, f32x4, f32x8};
@@ -10,7 +12,7 @@ pub struct ExtentsSimd {
     pub vec8: Vec<u32>,
     pub vec16: Vec<u32>,
 }
-
+use rayon::prelude::*;
 // struct RadSlice<'a>(&'a [f32], &'a [f32], &'a [f32]);
 type RadSlice<'a> = (&'a [f32], &'a [f32], &'a [f32]);
 
@@ -53,6 +55,65 @@ impl ExtentsSimd {
             vec16_ff,
         }
     }
+
+    // pub fn from_extents2(extents: &Vec<ffs::Extent>) -> ExtentsSimd {
+    //     let vec16 = Vec::new();
+    //     let vec8 = Vec::new();
+    //     let vec4 = Vec::new();
+    //     let vec16_ff = Vec::new();
+    //     let vec8_ff = Vec::new();
+    //     let vec4_ff = Vec::new();
+    //     let single = Vec::new();
+
+    //     let out = Mutex::new(ExtentsSimd {
+    //         single,
+    //         vec4,
+    //         vec8,
+    //         vec16,
+    //         vec4_ff,
+    //         vec8_ff,
+    //         vec16_ff,
+    //     });
+
+    //     let extents = extents.par_iter().map(|x| x.split_aligned(&[16, 8, 4, 1]));
+
+    //     extents.for_each(|extv| {
+    //         let mut vec16 = Vec::new();
+    //         let mut vec8 = Vec::new();
+    //         let mut vec4 = Vec::new();
+    //         let mut vec16_ff = Vec::new();
+    //         let mut vec8_ff = Vec::new();
+    //         let mut vec4_ff = Vec::new();
+    //         let mut single = Vec::new();
+    //         for ext in extv {
+    //             match ext.ffs.len() {
+    //                 16 => {
+    //                     vec16.push(ext.start);
+    //                     vec16_ff.push(f32x16::from_slice_unaligned(&ext.ffs));
+    //                 }
+    //                 8 => {
+    //                     vec8.push(ext.start);
+    //                     vec8_ff.push(f32x8::from_slice_unaligned(&ext.ffs));
+    //                 }
+    //                 4 => {
+    //                     vec4.push(ext.start);
+    //                     vec4_ff.push(f32x4::from_slice_unaligned(&ext.ffs));
+    //                 }
+    //                 1 => single.push((ext.start, ext.ffs[0])),
+    //                 _ => panic!("bad extent size: {}", ext.ffs.len()),
+    //             }
+    //         }
+    //         let mut out = out.lock().unwrap();
+    //         out.vec16.append(&mut vec16);
+    //         out.vec8.append(&mut vec8);
+    //         out.vec4.append(&mut vec4);
+    //         out.single.append(&mut single);
+    //         out.vec16_ff.append(&mut vec16_ff);
+    //         out.vec8_ff.append(&mut vec8_ff);
+    //         out.vec4_ff.append(&mut vec4_ff);
+    //     });
+    //     out.into_inner().unwrap()
+    // }
 
     pub fn collect(
         &self,

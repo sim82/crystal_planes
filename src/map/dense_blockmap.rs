@@ -161,9 +161,9 @@ impl DenseBlockmap {
 impl Bitmap for DenseBlockmap {
     fn get(&self, p: Point3i) -> bool {
         //self.get(p.x(), p.y().p.z())
-        let x = p.x();
-        let y = p.y();
-        let z = p.z();
+        let x = p.x;
+        let y = p.y;
+        let z = p.z;
 
         if x < 0
             || y < 0
@@ -184,12 +184,12 @@ impl Bitmap for DenseBlockmap {
 
     fn step(&self, p: Point3i, dir: &super::Dir) -> Option<Point3i> {
         let pnew = p + dir.get_normal_i();
-        if pnew.x() < 0
-            || pnew.y() < 0
-            || pnew.z() < 0
-            || pnew.x() >= self.x as i32
-            || pnew.y() >= self.y as i32
-            || pnew.z() >= self.z as i32
+        if pnew.x < 0
+            || pnew.y < 0
+            || pnew.z < 0
+            || pnew.x >= self.x as i32
+            || pnew.y >= self.y as i32
+            || pnew.z >= self.z as i32
         {
             None
         } else {
@@ -250,7 +250,7 @@ mod test {
         let mut count_all = 0;
         for p in cells.iter() {
             count_all += 1;
-            if bm.occluded(Point3i::new(p.x(), p.y(), p.z()), start, None, None, true) {
+            if bm.occluded(Point3i::new(p.x, p.y, p.z), start, None, None, true) {
                 count += 1;
             }
         }

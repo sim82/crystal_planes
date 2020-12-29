@@ -63,10 +63,10 @@ fn vis_update_system(
                 let octant = octants.get(id);
                 let (pos, size) = octant.get_geometry(height);
 
-                let cube_size = size.0 as f32 * 0.25 * 0.5;
+                let cube_size = size.x as f32 * 0.25 * 0.5;
                 let mesh = vis_info
                     .cubes
-                    .entry(size.0)
+                    .entry(size.x)
                     .or_insert_with(|| meshes.add(Mesh::from(shape::Cube { size: cube_size })))
                     .clone();
 

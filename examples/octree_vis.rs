@@ -42,11 +42,11 @@ fn setup(
         // }
         let (pos, size) = octant.get_geometry(height);
         let mesh = cubes
-            .entry(size.0)
+            .entry(size.x)
             .or_insert_with(|| {
                 meshes
                     .add(Mesh::from(shape::Cube {
-                        size: size.0 as f32 * 0.125 * 0.5,
+                        size: size.x as f32 * 0.125 * 0.5,
                     }))
                     .clone()
             })

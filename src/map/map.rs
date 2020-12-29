@@ -38,27 +38,27 @@ pub trait BitmapBuilder {
 impl Bitmap for BlockMap {
     fn get(&self, p: Point3i) -> bool {
         let (x, y, z) = self.dim();
-        if p.x() < 0
-            || p.y() < 0
-            || p.z() < 0
-            || p.x() as usize >= x
-            || p.y() as usize >= y
-            || p.z() as usize >= z
+        if p.x < 0
+            || p.y < 0
+            || p.z < 0
+            || p.x as usize >= x
+            || p.y as usize >= y
+            || p.z as usize >= z
         {
             return false;
         }
         // self.bitmap[self.coord(&p)]
-        self[[p.x() as usize, p.y() as usize, p.z() as usize]]
+        self[[p.x as usize, p.y as usize, p.z as usize]]
     }
     fn step(&self, p: Point3i, dir: &Dir) -> Option<Point3i> {
         let (x, y, z) = self.dim();
         let pnew = p + dir.get_normal_i();
-        if pnew.x() < 0
-            || pnew.y() < 0
-            || pnew.z() < 0
-            || pnew.x() >= x as i32
-            || pnew.y() >= y as i32
-            || pnew.z() >= z as i32
+        if pnew.x < 0
+            || pnew.y < 0
+            || pnew.z < 0
+            || pnew.x >= x as i32
+            || pnew.y >= y as i32
+            || pnew.z >= z as i32
         {
             None
         } else {
@@ -110,7 +110,7 @@ impl Bitmap for BlockMap {
 impl BitmapBuilder for BlockMap {
     fn set(&mut self, p: Point3i, v: bool) {
         // let c = self.coord(&p);
-        self[[p.0 as usize, p.1 as usize, p.2 as usize]] = v;
+        self[[p.x as usize, p.y as usize, p.z as usize]] = v;
     }
 
     fn add(&mut self, slice: &MapSlice) {
@@ -346,24 +346,24 @@ impl PlanesSep {
             }
         }
 
-        let zx_order = |p1: &Plane, p2: &Plane| match p1.cell.y().cmp(&p2.cell.y()) {
-            std::cmp::Ordering::Equal => match p1.cell.z().cmp(&p2.cell.z()) {
-                std::cmp::Ordering::Equal => p1.cell.x().cmp(&p2.cell.x()),
+        let zx_order = |p1: &Plane, p2: &Plane| match p1.cell.y.cmp(&p2.cell.y) {
+            std::cmp::Ordering::Equal => match p1.cell.z.cmp(&p2.cell.z) {
+                std::cmp::Ordering::Equal => p1.cell.x.cmp(&p2.cell.x),
                 r => r,
             },
             r => r,
         };
 
-        let xy_order = |p1: &Plane, p2: &Plane| match p1.cell.z().cmp(&p2.cell.z()) {
-            std::cmp::Ordering::Equal => match p1.cell.x().cmp(&p2.cell.x()) {
-                std::cmp::Ordering::Equal => p1.cell.y().cmp(&p2.cell.y()),
+        let xy_order = |p1: &Plane, p2: &Plane| match p1.cell.z.cmp(&p2.cell.z) {
+            std::cmp::Ordering::Equal => match p1.cell.x.cmp(&p2.cell.x) {
+                std::cmp::Ordering::Equal => p1.cell.y.cmp(&p2.cell.y),
                 r => r,
             },
             r => r,
         };
-        let yz_order = |p1: &Plane, p2: &Plane| match p1.cell.x().cmp(&p2.cell.x()) {
-            std::cmp::Ordering::Equal => match p1.cell.y().cmp(&p2.cell.y()) {
-                std::cmp::Ordering::Equal => p1.cell.z().cmp(&p2.cell.z()),
+        let yz_order = |p1: &Plane, p2: &Plane| match p1.cell.x.cmp(&p2.cell.x) {
+            std::cmp::Ordering::Equal => match p1.cell.y.cmp(&p2.cell.y) {
+                std::cmp::Ordering::Equal => p1.cell.z.cmp(&p2.cell.z),
                 r => r,
             },
             r => r,

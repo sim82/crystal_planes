@@ -150,10 +150,10 @@ pub fn generate_points(octants: &Octants, root: OctantId, offset: &Point3i) -> V
 }
 
 pub fn zorder(p: &Point3i) -> usize {
-    assert!(p.x() >= 0 && p.y() >= 0 && p.z() >= 0);
-    let mut x = p.x() as u32;
-    let mut y = p.y() as u32;
-    let mut z = p.z() as u32;
+    assert!(p.x >= 0 && p.y >= 0 && p.z >= 0);
+    let mut x = p.x as u32;
+    let mut y = p.y as u32;
+    let mut z = p.z as u32;
 
     let mut rout: usize = 0;
     let mut n = 0;
@@ -381,7 +381,7 @@ fn test_get_geometry() {
         let (pos, size) = octant.get_geometry(4);
         println!("{:?}", octant);
         println!("octant: {:?} {:?}", pos, size);
-        assert_eq!(size.0, 2i32.pow(octant.scale));
+        assert_eq!(size.x, 2i32.pow(octant.scale));
 
         for (i, child) in octant.children.iter().enumerate() {
             if *child == Voxel::Leaf {
