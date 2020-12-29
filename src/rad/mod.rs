@@ -50,6 +50,7 @@ pub mod com {
     pub enum RenderToRad {
         PointLight(usize, Vec3, Vec3),
         SetStripeColors(Vec3, Vec3),
+        EnablePointlights(bool),
     }
 
     pub enum RadToRender {

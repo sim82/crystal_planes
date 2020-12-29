@@ -11,6 +11,8 @@ mod button;
 pub struct DemoSystemState {
     pub cycle: bool,
     pub cycle_timer: Timer,
+    pub light_enabled: bool,
+    pub light_enabled_target: bool,
 }
 
 /// This example illustrates how to create text and update it in a system. It displays the current FPS in the upper left hand corner.
@@ -233,10 +235,51 @@ fn setup_hud_system(
                     },
                     |res| {
                         let demo = res.get::<DemoSystemState>().unwrap();
-                        if demo.cycle {
+                        if !demo.cycle {
                             "cycle off".into()
                         } else {
                             "cycle on".into()
+                        }
+                    },
+                ))
+                .with_children(|parent| {
+                    parent
+                        .spawn(TextBundle {
+                            text: Text {
+                                value: "Start".to_string(),
+                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                                style: TextStyle {
+                                    font_size: 40.0,
+                                    color: Color::rgb(0.8, 0.8, 0.8),
+                                    ..Default::default()
+                                },
+                            },
+                            ..Default::default()
+                        })
+                        .with(RotateButtonText);
+                })
+                .spawn(ButtonBundle {
+                    style: Style {
+                        size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        align_self: AlignSelf::FlexStart,
+                        ..Default::default()
+                    },
+                    material: button_materials.normal.clone(),
+                    ..Default::default()
+                })
+                .with(button::ToggleButton::new(
+                    |res| {
+                        let mut demo = res.get_mut::<DemoSystemState>().unwrap();
+                        demo.light_enabled_target = !demo.light_enabled;
+                    },
+                    |res| {
+                        let demo = res.get::<DemoSystemState>().unwrap();
+                        if !demo.light_enabled {
+                            "lights off".into()
+                        } else {
+                            "lights on".into()
                         }
                     },
                 ))

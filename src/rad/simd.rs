@@ -25,8 +25,8 @@ impl ExtentsSimd {
         let mut vec8_ff = Vec::new();
         let mut vec4_ff = Vec::new();
         let mut single = Vec::new();
-
-        for ext in extents.iter().flat_map(|x| x.split_aligned(&[16, 8, 4, 1])) {
+        // for ext in extents.iter().flat_map(|x| x.split_aligned(&[16, 8, 4, 1])) {
+        for ext in extents.iter().flat_map(|x| x.iter_aligned(&[16, 8, 4, 1])) {
             match ext.ffs.len() {
                 16 => {
                     vec16.push(ext.start);

@@ -292,6 +292,35 @@ pub struct Extent {
     pub ffs: Vec<f32>,
 }
 
+pub struct SplitAlignedIterator<'a> {
+    align: &'static [usize],
+    ffs: &'a [f32],
+    first: usize,
+    i: usize,
+    end: usize,
+}
+
+impl<'a> Iterator for SplitAlignedIterator<'a> {
+    type Item = Extent;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i >= self.end {
+            return None;
+        }
+        for a in self.align {
+            if self.i % *a == 0 && self.end - self.i >= *a {
+                let ret = Some(Extent::new(
+                    self.i as u32,
+                    self.ffs[self.i - self.first..self.i + a - self.first].to_vec(),
+                ));
+                self.i += a;
+                return ret;
+            }
+        }
+        unreachable!();
+    }
+}
+
 impl Extent {
     fn new(start: u32, ffs: Vec<f32>) -> Self {
         Extent {
@@ -299,60 +328,7 @@ impl Extent {
             ffs: ffs,
         }
     }
-    // #[allow(dead_code)]
-    // pub fn split_aligned2(&self, alignments: &[usize]) -> Vec<Extent> {
-    //     //let alignments = &[16, 8, 4, 1];
-    //     let first = self.start as usize;
-    //     let mut i = first;
-    //     let end = first + self.ffs.len();
-    //     let mut out = Vec::new();
 
-    //     while i < end && i % 4 != 0 {
-    //         out.push(Extent::new(
-    //             i as u32,
-    //             self.ffs[i - first..i + 1 - first].to_vec(),
-    //         ));
-    //         i += 1;
-    //     }
-
-    //     while i < end && i % alignments[0] != 0 {
-    //         for a in &alignments[1..] {
-    //             if i % *a == 0 && end - i >= *a {
-    //                 out.push(Extent::new(
-    //                     i as u32,
-    //                     self.ffs[i - first..i + a - first].to_vec(),
-    //                 ));
-    //                 i += a;
-    //                 break;
-    //             }
-    //         }
-    //     }
-    //     while i < end {
-    //         for a in alignments {
-    //             if i % *a == 0 {
-    //                 // let mut do_break = false;
-    //                 while end - i >= *a {
-    //                     out.push(Extent::new(
-    //                         i as u32,
-    //                         self.ffs[i - first..i + a - first].to_vec(),
-    //                     ));
-    //                     i += a;
-    //                     // do_break = true;
-    //                     // break;
-    //                 }
-    //                 // if do_break {
-    //                 //     break;
-    //                 // }
-
-    //                 // if i0 != i {
-    //                 // break;
-    //                 // }
-    //             }
-    //         }
-    //     }
-    //     // assert_eq!(out, self.split_aligned2(alignments));
-    //     out
-    // }
     #[allow(dead_code)]
     pub fn split_aligned(&self, alignments: &[usize]) -> Vec<Extent> {
         let first = self.start as usize;
@@ -373,6 +349,16 @@ impl Extent {
             }
         }
         out
+    }
+
+    pub fn iter_aligned(&self, align: &'static [usize]) -> SplitAlignedIterator<'_> {
+        SplitAlignedIterator {
+            align,
+            ffs: &self.ffs[..],
+            first: self.start as usize,
+            i: self.start as usize,
+            end: self.start as usize + self.ffs.len(),
+        }
     }
 }
 impl Debug for Extent {

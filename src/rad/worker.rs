@@ -71,6 +71,7 @@ struct CommonData {
     emit: Vec<Vec3>,
     diffuse: Vec<Vec3>,
     point_lights: std::collections::HashMap<usize, (Vec3, Vec3)>,
+    lights_enabled: bool,
 }
 
 impl CommonData {
@@ -101,13 +102,21 @@ impl CommonData {
                     // diffuse color change needs update of emit (via point lights)
                     light_updates.extend(self.point_lights.keys());
                 }
+                RenderToRad::EnablePointlights(v) => {
+                    self.lights_enabled = v;
+                    // println!("lights enabled: {}", self.lights_enabled)
+                }
             }
         }
-        for id in light_updates.iter() {
-            if let Some((pos, color)) = self.point_lights.get(id) {
-                // let pt = crate::util::ProfTimer::new("apply_pointlight");
-                apply_pointlight(&mut self.emit, &self.diffuse, &self.plane_scene, pos, color);
+        if self.lights_enabled {
+            for id in light_updates.iter() {
+                if let Some((pos, color)) = self.point_lights.get(id) {
+                    // let pt = crate::util::ProfTimer::new("apply_pointlight");
+                    apply_pointlight(&mut self.emit, &self.diffuse, &self.plane_scene, pos, color);
+                }
             }
+        } else {
+            self.emit.iter_mut().for_each(|v| *v = Vec3::zero())
         }
     }
 }
@@ -184,6 +193,7 @@ impl RadUpdate for RadBuildFormfactors {
         }
         self.common
             .apply_light_updates(&mut self.channels.render_to_rad);
+
         let rad_start = std::time::Instant::now();
         // println!("iter raw");
         let r = &mut self.common.back_buf.0.r;
@@ -345,8 +355,11 @@ struct RadUpdateSimd {
 
 impl RadUpdate for RadUpdateSimd {
     fn update(mut self: Box<Self>) -> Option<Box<dyn RadUpdate>> {
+        // panic!("end");
+
         self.common
             .apply_light_updates(&mut self.channels.render_to_rad);
+
         let rad_start = std::time::Instant::now();
         {
             let extents_simd = &mut self.extents_simd;
@@ -432,6 +445,7 @@ pub fn spawn_rad_update(
         emit,
         diffuse,
         point_lights: std::collections::HashMap::new(),
+        lights_enabled: true,
     };
 
     std::thread::spawn(move || {
@@ -497,7 +511,7 @@ fn rad_preview_on_plain_formfactors(
             duration: rad_start.elapsed(),
             num_int: formfactors.len(),
         });
-        if start.elapsed().as_millis() > 100 {
+        if start.elapsed().as_millis() > 20 {
             break;
         }
     }

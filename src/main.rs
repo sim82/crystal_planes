@@ -246,6 +246,8 @@ impl Default for DemoSystemState {
         DemoSystemState {
             cycle: false,
             cycle_timer: Timer::from_seconds(1f32, true),
+            light_enabled: true,
+            light_enabled_target: true,
         }
     }
 }
@@ -267,6 +269,17 @@ fn demo_system(
             .send(rad::com::RenderToRad::SetStripeColors(
                 rand_color(0f32, 180f32),
                 rand_color(180f32, 360f32),
+            ))
+            .unwrap();
+    }
+
+    if state.light_enabled != state.light_enabled_target {
+        state.light_enabled = state.light_enabled_target;
+        rad_update_channel
+            .lock()
+            .unwrap()
+            .send(rad::com::RenderToRad::EnablePointlights(
+                state.light_enabled,
             ))
             .unwrap();
     }
