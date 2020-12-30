@@ -8,6 +8,7 @@ use std::sync::{mpsc::Receiver, mpsc::SendError, mpsc::Sender, Mutex};
 
 use super::{
     com::{RadToRender, RenderToRad},
+    compress,
     data::{BackBuf, FrontBuf, RadBuffer},
     ffs,
     light::apply_pointlight,
@@ -134,6 +135,7 @@ impl RadUpdate for RadTryLoad {
         let _pt = ProfTimer::new("try read");
         match ffs::Extents::try_load("extents.bin", &self.common.plane_scene.get_digest()) {
             Some(extents) => Some(Box::new(RadGenerateSimdExtents {
+                // Some(extents) => Some(Box::new(RadGenerateCompressedExtents {
                 channels: self.channels,
                 common: self.common,
                 extents,
@@ -293,11 +295,22 @@ impl RadUpdate for RadPostprocessFormfactors {
             extents.write("extents.bin", &self.common.plane_scene.get_digest());
         }
         rad_preview_on_plain_formfactors(&mut self.channels, &mut self.common, &formfactors_sep);
-        return Some(Box::new(RadGenerateSimdExtents {
-            channels: self.channels,
-            common: self.common,
-            extents,
-        }));
+
+        if false {
+            info!("-> simd");
+            return Some(Box::new(RadGenerateSimdExtents {
+                channels: self.channels,
+                common: self.common,
+                extents,
+            }));
+        } else {
+            info!("-> compressed");
+            return Some(Box::new(RadGenerateCompressedExtents {
+                channels: self.channels,
+                common: self.common,
+                extents,
+            }));
+        }
     }
 }
 
@@ -317,14 +330,20 @@ impl RadUpdate for RadGenerateSimdExtents {
         let mut num8 = 0;
         let mut num4 = 0;
         let mut num_single = 0;
-        for ext in &self.extents.0 {
-            let ext_simd = simd::ExtentsSimd::from_extents(&ext);
-            num16 += ext_simd.vec16.len();
-            num8 += ext_simd.vec8.len();
-            num4 += ext_simd.vec4.len();
-            num_single += ext_simd.single.len();
-            extents_simd.push(ext_simd);
-        }
+        // for ext in &self.extents.0 {
+        //     let ext_simd = simd::ExtentsSimd::from_extents(&ext);
+        //     num16 += ext_simd.vec16.len();
+        //     num8 += ext_simd.vec8.len();
+        //     num4 += ext_simd.vec4.len();
+        //     num_single += ext_simd.single.len();
+        //     extents_simd.push(ext_simd);
+        // }
+        extents_simd = self
+            .extents
+            .0
+            .par_iter()
+            .map(|ext| simd::ExtentsSimd::from_extents(&ext))
+            .collect();
         info!(
             "extents:\n16 * {} = {}\n8 * {} = {}\n4 * {} = {}\n1 * {}",
             num16,
@@ -346,6 +365,58 @@ impl RadUpdate for RadGenerateSimdExtents {
     }
 }
 
+struct RadGenerateCompressedExtents {
+    channels: Channels,
+    common: CommonData,
+    extents: ffs::Extents,
+}
+
+impl RadUpdate for RadGenerateCompressedExtents {
+    fn update(mut self: Box<Self>) -> Option<Box<dyn RadUpdate>> {
+        self.channels
+            .send(RadToRender::StatusUpdate("build compressed extents".into()));
+        let _pt = ProfTimer::new("to_compressed_extents");
+        let mut extents_simd = Vec::new();
+        let mut num16 = 0;
+        let mut num8 = 0;
+        let mut num4 = 0;
+        let mut num_single = 0;
+        // for ext in &self.extents.0 {
+        //     let ext_simd = compress::ExtentsCompressed::from_extents(&ext);
+        //     num16 += ext_simd.vec16.len();
+        //     num8 += ext_simd.vec8.len();
+        //     num4 += ext_simd.vec4.len();
+        //     num_single += ext_simd.single.len();
+        //     extents_simd.push(ext_simd);
+        // }
+
+        extents_simd = self
+            .extents
+            .0
+            .par_iter()
+            .map(|ext| compress::ExtentsCompressed::from_extents(&ext))
+            .collect();
+        info!(
+            "extents:\n16 * {} = {}\n8 * {} = {}\n4 * {} = {}\n1 * {}",
+            num16,
+            num16 * 16,
+            num8,
+            num8 * 8,
+            num4,
+            num4 * 4,
+            num_single
+        );
+        let int_per_iter = num16 * 16 + num8 * 8 + num4 * 4 + num_single;
+        self.channels.send(RadToRender::RadReady);
+        Some(Box::new(RadUpdateCompressed {
+            channels: self.channels,
+            common: self.common,
+            extents_simd,
+            int_per_iter,
+        }))
+    }
+}
+
 struct RadUpdateSimd {
     channels: Channels,
     common: CommonData,
@@ -354,6 +425,65 @@ struct RadUpdateSimd {
 }
 
 impl RadUpdate for RadUpdateSimd {
+    fn update(mut self: Box<Self>) -> Option<Box<dyn RadUpdate>> {
+        // panic!("end");
+
+        self.common
+            .apply_light_updates(&mut self.channels.render_to_rad);
+
+        let rad_start = std::time::Instant::now();
+        {
+            let extents_simd = &mut self.extents_simd;
+            // run one iteration of radiosity integration (aka. 'heavy lifting').
+            // holding only a read lock to front_buf, so gfx code can concurrently access it without blocking.
+            let front = self.common.front_buf.read();
+
+            let r = &mut self.common.back_buf.0.r;
+            let g = &mut self.common.back_buf.0.g;
+            let b = &mut self.common.back_buf.0.b;
+            let emit = &self.common.emit;
+            let diffuse = &self.common.diffuse;
+
+            r.par_iter_mut()
+                .zip(g.par_iter_mut())
+                .zip(b.par_iter_mut())
+                .enumerate()
+                .for_each(|(i, ((r, g), b))| {
+                    let rad = extents_simd[i].collect(
+                        i,
+                        (&front.r[..], &front.g[..], &front.b[..]),
+                        emit[i],
+                        diffuse[i],
+                    );
+                    *r = rad.0;
+                    *g = rad.1;
+                    *b = rad.2;
+                });
+        }
+        {
+            // swap back and front buffers. should be pretty much instant, so no blocking of gfx code.
+            let mut front = self.common.front_buf.write();
+            std::mem::swap(&mut *front, &mut self.common.back_buf.0);
+        }
+        if !self.channels.send(RadToRender::IterationDone {
+            num_int: self.int_per_iter,
+            duration: rad_start.elapsed(),
+        }) {
+            info!("channel disconnected. terminate rad thread");
+            return None;
+        }
+        Some(self)
+    }
+}
+
+struct RadUpdateCompressed {
+    channels: Channels,
+    common: CommonData,
+    extents_simd: Vec<compress::ExtentsCompressed>,
+    int_per_iter: usize,
+}
+
+impl RadUpdate for RadUpdateCompressed {
     fn update(mut self: Box<Self>) -> Option<Box<dyn RadUpdate>> {
         // panic!("end");
 

@@ -1,3 +1,4 @@
+pub mod compress;
 pub mod ffs;
 pub mod simd;
 pub mod worker;
