@@ -402,6 +402,12 @@ pub struct Extents(pub Vec<Vec<Extent>>);
 const EXTENT_VERSION: &str = "extents v1";
 
 impl Extents {
+    pub fn load(filename: &str) -> Option<Self> {
+        let f = std::fs::File::open(filename).ok()?;
+        println!("read from {}", filename);
+        let d: (String, String, Extents) = bincode::deserialize_from(BufReader::new(f)).ok()?;
+        Some(d.2)
+    }
     pub fn try_load(filename: &str, scene_tag: &str) -> Option<Self> {
         if let Ok(f) = std::fs::File::open(filename) {
             println!("read from {}", filename);
