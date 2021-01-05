@@ -296,7 +296,7 @@ impl RadUpdate for RadPostprocessFormfactors {
         }
         rad_preview_on_plain_formfactors(&mut self.channels, &mut self.common, &formfactors_sep);
 
-        if false {
+        if true {
             info!("-> simd");
             return Some(Box::new(RadGenerateSimdExtents {
                 channels: self.channels,
@@ -330,20 +330,20 @@ impl RadUpdate for RadGenerateSimdExtents {
         let mut num8 = 0;
         let mut num4 = 0;
         let mut num_single = 0;
-        // for ext in &self.extents.0 {
-        //     let ext_simd = simd::ExtentsSimd::from_extents(&ext);
-        //     num16 += ext_simd.vec16.len();
-        //     num8 += ext_simd.vec8.len();
-        //     num4 += ext_simd.vec4.len();
-        //     num_single += ext_simd.single.len();
-        //     extents_simd.push(ext_simd);
-        // }
-        extents_simd = self
-            .extents
-            .0
-            .par_iter()
-            .map(|ext| simd::ExtentsSimd::from_extents(&ext))
-            .collect();
+        for ext in &self.extents.0 {
+            let ext_simd = simd::ExtentsSimd::from_extents(&ext);
+            num16 += ext_simd.vec16.len();
+            num8 += ext_simd.vec8.len();
+            num4 += ext_simd.vec4.len();
+            num_single += ext_simd.single.len();
+            extents_simd.push(ext_simd);
+        }
+        // extents_simd = self
+        //     .extents
+        //     .0
+        //     .par_iter()
+        //     .map(|ext| simd::ExtentsSimd::from_extents(&ext))
+        //     .collect();
         info!(
             "extents:\n16 * {} = {}\n8 * {} = {}\n4 * {} = {}\n1 * {}",
             num16,
@@ -381,21 +381,21 @@ impl RadUpdate for RadGenerateCompressedExtents {
         let mut num8 = 0;
         let mut num4 = 0;
         let mut num_single = 0;
-        // for ext in &self.extents.0 {
-        //     let ext_simd = compress::ExtentsCompressed::from_extents(&ext);
-        //     num16 += ext_simd.vec16.len();
-        //     num8 += ext_simd.vec8.len();
-        //     num4 += ext_simd.vec4.len();
-        //     num_single += ext_simd.single.len();
-        //     extents_simd.push(ext_simd);
-        // }
+        for ext in &self.extents.0 {
+            let ext_simd = compress::ExtentsCompressed::from_extents(&ext);
+            num16 += ext_simd.vec16.len();
+            num8 += ext_simd.vec8.len();
+            num4 += ext_simd.vec4.len();
+            num_single += ext_simd.single.len();
+            extents_simd.push(ext_simd);
+        }
 
-        extents_simd = self
-            .extents
-            .0
-            .par_iter()
-            .map(|ext| compress::ExtentsCompressed::from_extents(&ext))
-            .collect();
+        // extents_simd = self
+        //     .extents
+        //     .0
+        //     .par_iter()
+        //     .map(|ext| compress::ExtentsCompressed::from_extents(&ext))
+        //     .collect();
         info!(
             "extents:\n16 * {} = {}\n8 * {} = {}\n4 * {} = {}\n1 * {}",
             num16,
