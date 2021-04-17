@@ -62,14 +62,14 @@ fn update_hud_system(
                                 average /= 1000f64;
                                 mag += 1;
                             }
-                            text.value = format!("{} {:.3}{}", diag_text, average, mag_to_str(mag))
+                            text.sections[0].value = format!("{} {:.3}{}", diag_text, average, mag_to_str(mag))
                         } else {
-                            text.value = format!("{} {:.2}", diag_text, average);
+                            text.sections[0].value = format!("{} {:.2}", diag_text, average);
                         }
                     }
                 }
             }
-            HudSrc::RenderStatus => (text.value = format!("render status: {}", render_status.text)),
+            HudSrc::RenderStatus => (text.sections[0].value = format!("render status: {}", render_status.text)),
             HudSrc::LoadingScreen => (),
         }
 
@@ -83,16 +83,16 @@ fn update_hud_system(
 struct RotateButtonText;
 
 fn setup_hud_system(
-    commands: &mut Commands,
+    mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut _materials: ResMut<Assets<ColorMaterial>>,
     button_materials: Res<button::ButtonMaterials>,
 ) {
-    let font_handle = asset_server.load("fonts/FiraMono-Medium.ttf");
+    // let font_handle = asset_server.load("fonts/FiraMono-Medium.ttf");
     commands
         // 2d camera
-        .spawn(CameraUiBundle::default())
-        .spawn(NodeBundle {
+        .spawn_bundle(UiCameraBundle::default());
+    commands.spawn_bundle(NodeBundle {
             style: Style {
                 flex_direction: FlexDirection::ColumnReverse,
                 flex_shrink: 1f32,
@@ -103,288 +103,283 @@ fn setup_hud_system(
         })
         .with_children(|parent| {
             parent
-                .spawn(TextBundle {
+                .spawn_bundle(TextBundle {
                     style: Style {
                         align_self: AlignSelf::FlexStart,
-                        // margin: Rect {
-                        //     right: Val::Px(64f32),
-                        //     ..Default::default()
-                        // },
                         ..Default::default()
                     },
-                    text: Text {
-                        value: "FPS:".to_string(),
-                        font: font_handle.clone(),
-                        style: TextStyle {
+                    text: Text::with_section(
+                        "FPS:".to_string(),
+                        // font: font_handle.clone(),
+                        TextStyle {
                             font_size: 24.0,
                             color: Color::WHITE,
                             ..Default::default()
-                        },
-                    },
-                    ..Default::default()
-                })
-                .with(HudSrc::Diagnostics(
+                        }, TextAlignment::default()),
+                        ..Default::default()
+                    })
+                .insert(HudSrc::Diagnostics(
                     "FPS".into(),
                     FrameTimeDiagnosticsPlugin::FPS,
                     false,
-                ))
-                .spawn(TextBundle {
-                    style: Style {
-                        align_self: AlignSelf::FlexStart,
-                        // margin: Rect {
-                        //     right: Val::Px(64f32),
-                        //     ..Default::default()
-                        // },
-                        ..Default::default()
-                    },
-                    text: Text {
-                        value: "Int/s:".to_string(),
-                        font: font_handle.clone(),
-                        style: TextStyle {
-                            font_size: 24.0,
-                            color: Color::WHITE,
-                            ..Default::default()
-                        },
-                    },
-                    ..Default::default()
-                })
-                .with(HudSrc::Diagnostics(
-                    "Int/s".into(),
-                    RAD_INT_PER_SECOND,
-                    true,
-                ))
-                .spawn(TextBundle {
-                    style: Style {
-                        align_self: AlignSelf::FlexStart,
-                        // margin: Rect {
-                        //     right: Val::Px(256f32),
-                        //     ..Default::default()
-                        // },
-                        ..Default::default()
-                    },
-                    text: Text {
-                        value: "Int/s:".to_string(),
-                        font: font_handle.clone(),
-                        style: TextStyle {
-                            font_size: 24.0,
-                            color: Color::WHITE,
-                            ..Default::default()
-                        },
-                    },
-                    ..Default::default()
-                })
-                .with(HudSrc::RenderStatus)
-                .spawn(ButtonBundle {
-                    style: Style {
-                        size: Size::new(Val::Px(150.0), Val::Px(65.0)),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        align_self: AlignSelf::FlexStart,
-                        ..Default::default()
-                    },
-                    material: button_materials.normal.clone(),
-                    ..Default::default()
-                })
-                .with(button::ToggleButton::new(
-                    |res| {
-                        let mut rot = res
-                            .get_mut::<super::quad_render::RotatorSystemState>()
-                            .unwrap();
-                        rot.run = !rot.run;
-                    },
-                    |res| {
-                        let rot = res.get::<super::quad_render::RotatorSystemState>().unwrap();
-                        if rot.run {
-                            "Stop".into()
-                        } else {
-                            "Start".into()
-                        }
-                    },
-                ))
-                .with_children(|parent| {
-                    parent
-                        .spawn(TextBundle {
-                            text: Text {
-                                value: "Start".to_string(),
-                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                                style: TextStyle {
-                                    font_size: 40.0,
-                                    color: Color::rgb(0.8, 0.8, 0.8),
-                                    ..Default::default()
-                                },
-                            },
-                            ..Default::default()
-                        })
-                        .with(RotateButtonText);
-                })
-                .spawn(ButtonBundle {
-                    style: Style {
-                        size: Size::new(Val::Px(150.0), Val::Px(65.0)),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        align_self: AlignSelf::FlexStart,
-                        ..Default::default()
-                    },
-                    material: button_materials.normal.clone(),
-                    ..Default::default()
-                })
-                .with(button::ToggleButton::new(
-                    |res| {
-                        let mut demo = res.get_mut::<DemoSystemState>().unwrap();
-                        demo.cycle = !demo.cycle;
-                    },
-                    |res| {
-                        let demo = res.get::<DemoSystemState>().unwrap();
-                        if !demo.cycle {
-                            "cycle off".into()
-                        } else {
-                            "cycle on".into()
-                        }
-                    },
-                ))
-                .with_children(|parent| {
-                    parent
-                        .spawn(TextBundle {
-                            text: Text {
-                                value: "Start".to_string(),
-                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                                style: TextStyle {
-                                    font_size: 40.0,
-                                    color: Color::rgb(0.8, 0.8, 0.8),
-                                    ..Default::default()
-                                },
-                            },
-                            ..Default::default()
-                        })
-                        .with(RotateButtonText);
-                })
-                .spawn(ButtonBundle {
-                    style: Style {
-                        size: Size::new(Val::Px(150.0), Val::Px(65.0)),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        align_self: AlignSelf::FlexStart,
-                        ..Default::default()
-                    },
-                    material: button_materials.normal.clone(),
-                    ..Default::default()
-                })
-                .with(button::ToggleButton::new(
-                    |res| {
-                        let mut demo = res.get_mut::<DemoSystemState>().unwrap();
-                        demo.light_enabled_target = !demo.light_enabled;
-                    },
-                    |res| {
-                        let demo = res.get::<DemoSystemState>().unwrap();
-                        if !demo.light_enabled {
-                            "lights off".into()
-                        } else {
-                            "lights on".into()
-                        }
-                    },
-                ))
-                .with_children(|parent| {
-                    parent
-                        .spawn(TextBundle {
-                            text: Text {
-                                value: "Start".to_string(),
-                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                                style: TextStyle {
-                                    font_size: 40.0,
-                                    color: Color::rgb(0.8, 0.8, 0.8),
-                                    ..Default::default()
-                                },
-                            },
-                            ..Default::default()
-                        })
-                        .with(RotateButtonText);
-                })
-                .spawn(ButtonBundle {
-                    style: Style {
-                        size: Size::new(Val::Px(150.0), Val::Px(65.0)),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        align_self: AlignSelf::FlexStart,
-                        ..Default::default()
-                    },
-                    material: button_materials.normal.clone(),
-                    ..Default::default()
-                })
-                .with(button::ToggleButton::new(
-                    |res| {
-                        let mut vis_info = res
-                            .get_mut::<super::octree_render::OctreeVisInfo>()
-                            .unwrap();
+                ));});
+        //         .spawn(TextBundle {
+        //             style: Style {
+        //                 align_self: AlignSelf::FlexStart,
+        //                 // margin: Rect {
+        //                 //     right: Val::Px(64f32),
+        //                 //     ..Default::default()
+        //                 // },
+        //                 ..Default::default()
+        //             },
+        //             text: Text {
+        //                 value: "Int/s:".to_string(),
+        //                 font: font_handle.clone(),
+        //                 style: TextStyle {
+        //                     font_size: 24.0,
+        //                     color: Color::WHITE,
+        //                     ..Default::default()
+        //                 },
+        //             },
+        //             ..Default::default()
+        //         })
+        //         .with(HudSrc::Diagnostics(
+        //             "Int/s".into(),
+        //             RAD_INT_PER_SECOND,
+        //             true,
+        //         ))
+        //         .spawn(TextBundle {
+        //             style: Style {
+        //                 align_self: AlignSelf::FlexStart,
+        //                 // margin: Rect {
+        //                 //     right: Val::Px(256f32),
+        //                 //     ..Default::default()
+        //                 // },
+        //                 ..Default::default()
+        //             },
+        //             text: Text {
+        //                 value: "Int/s:".to_string(),
+        //                 font: font_handle.clone(),
+        //                 style: TextStyle {
+        //                     font_size: 24.0,
+        //                     color: Color::WHITE,
+        //                     ..Default::default()
+        //                 },
+        //             },
+        //             ..Default::default()
+        //         })
+        //         .with(HudSrc::RenderStatus)
+        //         .spawn(ButtonBundle {
+        //             style: Style {
+        //                 size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+        //                 justify_content: JustifyContent::Center,
+        //                 align_items: AlignItems::Center,
+        //                 align_self: AlignSelf::FlexStart,
+        //                 ..Default::default()
+        //             },
+        //             material: button_materials.normal.clone(),
+        //             ..Default::default()
+        //         })
+        //         .with(button::ToggleButton::new(
+        //             |res| {
+        //                 let mut rot = res
+        //                     .get_mut::<super::quad_render::RotatorSystemState>()
+        //                     .unwrap();
+        //                 rot.run = !rot.run;
+        //             },
+        //             |res| {
+        //                 let rot = res.get::<super::quad_render::RotatorSystemState>().unwrap();
+        //                 if rot.run {
+        //                     "Stop".into()
+        //                 } else {
+        //                     "Start".into()
+        //                 }
+        //             },
+        //         ))
+        //         .with_children(|parent| {
+        //             parent
+        //                 .spawn(TextBundle {
+        //                     text: Text {
+        //                         value: "Start".to_string(),
+        //                         font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+        //                         style: TextStyle {
+        //                             font_size: 40.0,
+        //                             color: Color::rgb(0.8, 0.8, 0.8),
+        //                             ..Default::default()
+        //                         },
+        //                     },
+        //                     ..Default::default()
+        //                 })
+        //                 .with(RotateButtonText);
+        //         })
+        //         .spawn(ButtonBundle {
+        //             style: Style {
+        //                 size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+        //                 justify_content: JustifyContent::Center,
+        //                 align_items: AlignItems::Center,
+        //                 align_self: AlignSelf::FlexStart,
+        //                 ..Default::default()
+        //             },
+        //             material: button_materials.normal.clone(),
+        //             ..Default::default()
+        //         })
+        //         .with(button::ToggleButton::new(
+        //             |res| {
+        //                 let mut demo = res.get_mut::<DemoSystemState>().unwrap();
+        //                 demo.cycle = !demo.cycle;
+        //             },
+        //             |res| {
+        //                 let demo = res.get::<DemoSystemState>().unwrap();
+        //                 if !demo.cycle {
+        //                     "cycle off".into()
+        //                 } else {
+        //                     "cycle on".into()
+        //                 }
+        //             },
+        //         ))
+        //         .with_children(|parent| {
+        //             parent
+        //                 .spawn(TextBundle {
+        //                     text: Text {
+        //                         value: "Start".to_string(),
+        //                         font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+        //                         style: TextStyle {
+        //                             font_size: 40.0,
+        //                             color: Color::rgb(0.8, 0.8, 0.8),
+        //                             ..Default::default()
+        //                         },
+        //                     },
+        //                     ..Default::default()
+        //                 })
+        //                 .with(RotateButtonText);
+        //         })
+        //         .spawn(ButtonBundle {
+        //             style: Style {
+        //                 size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+        //                 justify_content: JustifyContent::Center,
+        //                 align_items: AlignItems::Center,
+        //                 align_self: AlignSelf::FlexStart,
+        //                 ..Default::default()
+        //             },
+        //             material: button_materials.normal.clone(),
+        //             ..Default::default()
+        //         })
+        //         .with(button::ToggleButton::new(
+        //             |res| {
+        //                 let mut demo = res.get_mut::<DemoSystemState>().unwrap();
+        //                 demo.light_enabled_target = !demo.light_enabled;
+        //             },
+        //             |res| {
+        //                 let demo = res.get::<DemoSystemState>().unwrap();
+        //                 if !demo.light_enabled {
+        //                     "lights off".into()
+        //                 } else {
+        //                     "lights on".into()
+        //                 }
+        //             },
+        //         ))
+        //         .with_children(|parent| {
+        //             parent
+        //                 .spawn(TextBundle {
+        //                     text: Text {
+        //                         value: "Start".to_string(),
+        //                         font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+        //                         style: TextStyle {
+        //                             font_size: 40.0,
+        //                             color: Color::rgb(0.8, 0.8, 0.8),
+        //                             ..Default::default()
+        //                         },
+        //                     },
+        //                     ..Default::default()
+        //                 })
+        //                 .with(RotateButtonText);
+        //         })
+        //         .spawn(ButtonBundle {
+        //             style: Style {
+        //                 size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+        //                 justify_content: JustifyContent::Center,
+        //                 align_items: AlignItems::Center,
+        //                 align_self: AlignSelf::FlexStart,
+        //                 ..Default::default()
+        //             },
+        //             material: button_materials.normal.clone(),
+        //             ..Default::default()
+        //         })
+        //         .with(button::ToggleButton::new(
+        //             |res| {
+        //                 let mut vis_info = res
+        //                     .get_mut::<super::octree_render::OctreeVisInfo>()
+        //                     .unwrap();
 
-                        let new = match vis_info.show_level {
-                            None => Some(1),
-                            Some(x) => Some(x + 1),
-                        };
-                        println!("octree: {:?} {:?}", vis_info.show_level, new);
-                        vis_info.show_level = new;
-                    },
-                    |_| "octree +".into(),
-                ))
-                .with_children(|parent| {
-                    parent
-                        .spawn(TextBundle {
-                            text: Text {
-                                value: "Start".to_string(),
-                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                                style: TextStyle {
-                                    font_size: 40.0,
-                                    color: Color::rgb(0.8, 0.8, 0.8),
-                                    ..Default::default()
-                                },
-                            },
-                            ..Default::default()
-                        })
-                        .with(RotateButtonText);
-                })
-                .spawn(ButtonBundle {
-                    style: Style {
-                        size: Size::new(Val::Px(150.0), Val::Px(65.0)),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        align_self: AlignSelf::FlexStart,
-                        ..Default::default()
-                    },
-                    material: button_materials.normal.clone(),
-                    ..Default::default()
-                })
-                .with(button::ToggleButton::new(
-                    |res| {
-                        let mut vis_info = res
-                            .get_mut::<super::octree_render::OctreeVisInfo>()
-                            .unwrap();
+        //                 let new = match vis_info.show_level {
+        //                     None => Some(1),
+        //                     Some(x) => Some(x + 1),
+        //                 };
+        //                 println!("octree: {:?} {:?}", vis_info.show_level, new);
+        //                 vis_info.show_level = new;
+        //             },
+        //             |_| "octree +".into(),
+        //         ))
+        //         .with_children(|parent| {
+        //             parent
+        //                 .spawn(TextBundle {
+        //                     text: Text {
+        //                         value: "Start".to_string(),
+        //                         font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+        //                         style: TextStyle {
+        //                             font_size: 40.0,
+        //                             color: Color::rgb(0.8, 0.8, 0.8),
+        //                             ..Default::default()
+        //                         },
+        //                     },
+        //                     ..Default::default()
+        //                 })
+        //                 .with(RotateButtonText);
+        //         })
+        //         .spawn(ButtonBundle {
+        //             style: Style {
+        //                 size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+        //                 justify_content: JustifyContent::Center,
+        //                 align_items: AlignItems::Center,
+        //                 align_self: AlignSelf::FlexStart,
+        //                 ..Default::default()
+        //             },
+        //             material: button_materials.normal.clone(),
+        //             ..Default::default()
+        //         })
+        //         .with(button::ToggleButton::new(
+        //             |res| {
+        //                 let mut vis_info = res
+        //                     .get_mut::<super::octree_render::OctreeVisInfo>()
+        //                     .unwrap();
 
-                        let new = match vis_info.show_level {
-                            None => None,
-                            Some(x) if x <= 1 => None,
-                            Some(x) => Some(x - 1),
-                        };
-                        println!("octree: {:?} {:?}", vis_info.show_level, new);
-                        vis_info.show_level = new;
-                    },
-                    |_| "octree -".into(),
-                ))
-                .with_children(|parent| {
-                    parent
-                        .spawn(TextBundle {
-                            text: Text {
-                                value: "Start".to_string(),
-                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                                style: TextStyle {
-                                    font_size: 40.0,
-                                    color: Color::rgb(0.8, 0.8, 0.8),
-                                    ..Default::default()
-                                },
-                            },
-                            ..Default::default()
-                        })
-                        .with(RotateButtonText);
-                });
-        });
+        //                 let new = match vis_info.show_level {
+        //                     None => None,
+        //                     Some(x) if x <= 1 => None,
+        //                     Some(x) => Some(x - 1),
+        //                 };
+        //                 println!("octree: {:?} {:?}", vis_info.show_level, new);
+        //                 vis_info.show_level = new;
+        //             },
+        //             |_| "octree -".into(),
+        //         ))
+        //         .with_children(|parent| {
+        //             parent
+        //                 .spawn(TextBundle {
+        //                     text: Text {
+        //                         value: "Start".to_string(),
+        //                         font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+        //                         style: TextStyle {
+        //                             font_size: 40.0,
+        //                             color: Color::rgb(0.8, 0.8, 0.8),
+        //                             ..Default::default()
+        //                         },
+        //                     },
+        //                     ..Default::default()
+        //                 })
+        //                 .with(RotateButtonText);
+        //         });
+        // });
     // .spawn(TextBundle {
     //     style: Style {
     //         ..Default::default()

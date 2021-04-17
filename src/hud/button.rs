@@ -6,8 +6,8 @@ pub struct ButtonPlugin;
 impl Plugin for ButtonPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.init_resource::<ButtonMaterials>()
-            .add_system(toggle_button_system.system())
-            .add_system(toggle_button_text_system.system());
+            .add_system(toggle_button_system.exclusive_system())
+            .add_system(toggle_button_text_system.exclusive_system());
     }
 }
 
@@ -17,9 +17,9 @@ pub struct ButtonMaterials {
     pub pressed: Handle<ColorMaterial>,
 }
 
-impl FromResources for ButtonMaterials {
-    fn from_resources(resources: &Resources) -> Self {
-        let mut materials = resources.get_mut::<Assets<ColorMaterial>>().unwrap();
+impl FromWorld for ButtonMaterials {
+    fn from_world(world: &mut World) -> Self {
+        let mut materials = world.get_resource_mut::<Assets<ColorMaterial>>().unwrap();
         ButtonMaterials {
             normal: materials.add(Color::rgb(0.02, 0.02, 0.02).into()),
             hovered: materials.add(Color::rgb(0.05, 0.05, 0.05).into()),
@@ -29,15 +29,15 @@ impl FromResources for ButtonMaterials {
 }
 
 pub struct ToggleButton {
-    action: Box<dyn FnMut(&mut Resources) -> () + Send + Sync>,
-    get_label: Box<dyn Fn(&mut Resources) -> String + Send + Sync>,
+    action: Box<dyn FnMut(&mut World) -> () + Send + Sync>,
+    get_label: Box<dyn Fn(&mut World) -> String + Send + Sync>,
 }
 
 impl ToggleButton {
     pub fn new<A, G>(action: A, get_label: G) -> ToggleButton
     where
-        A: FnMut(&mut Resources) -> () + 'static + Send + Sync,
-        G: Fn(&mut Resources) -> String + 'static + Send + Sync,
+        A: FnMut(&mut World) -> () + 'static + Send + Sync,
+        G: Fn(&mut World) -> String + 'static + Send + Sync,
     {
         ToggleButton {
             action: Box::new(action),
@@ -46,33 +46,33 @@ impl ToggleButton {
     }
 }
 
-fn toggle_button_system(world: &mut World, res: &mut Resources) {
-    let query = world.query_filtered_mut::<(
-        &mut ToggleButton,
-        &Children,
-        &Interaction,
-        &mut Handle<ColorMaterial>,
-    ), (Mutated<Interaction>,)>();
-    for (mut toggle_button, _children, interaction, mut material) in query {
-        match *interaction {
-            Interaction::Clicked => {
-                {
-                    let action = &mut *toggle_button.action;
-                    action(res);
-                }
-                let button_materials = res.get::<ButtonMaterials>().unwrap();
-                *material = button_materials.pressed.clone();
-            }
-            Interaction::Hovered => {
-                let button_materials = res.get::<ButtonMaterials>().unwrap();
-                *material = button_materials.hovered.clone();
-            }
-            Interaction::None => {
-                let button_materials = res.get::<ButtonMaterials>().unwrap();
-                *material = button_materials.normal.clone();
-            }
-        }
-    }
+fn toggle_button_system(world: &mut World) {
+    // let mut query = world.query::<(
+    //     &mut ToggleButton,
+    //     &Children,
+    //     &Interaction,
+    //     &mut Handle<ColorMaterial>,
+    // )>();
+    // for (mut toggle_button, _children, interaction, mut material) in query.iter(world) {
+    //     match *interaction {
+    //         Interaction::Clicked => {
+    //             {
+    //                 let action = &mut *toggle_button.action;
+    //                 action(world);
+    //             }
+    //             let button_materials = world.get_resource::<ButtonMaterials>().unwrap();
+    //             *material = button_materials.pressed.clone();
+    //         }
+    //         Interaction::Hovered => {
+    //             let button_materials = world.get_resource::<ButtonMaterials>().unwrap();
+    //             *material = button_materials.hovered.clone();
+    //         }
+    //         Interaction::None => {
+    //             let button_materials = world.get_resource::<ButtonMaterials>().unwrap();
+    //             *material = button_materials.normal.clone();
+    //         }
+    //     }
+    // }
 }
 
 // fn toggle_button_system(
@@ -106,18 +106,18 @@ fn toggle_button_system(world: &mut World, res: &mut Resources) {
 //     }
 // }
 
-fn toggle_button_text_system(world: &mut World, res: &mut Resources) {
-    let mut set_texts = Vec::new();
-    let query = world.query::<(&ToggleButton, &Children)>();
+fn toggle_button_text_system(world: &mut World) {
+    // let mut set_texts = Vec::new();
+    // let query = world.query::<(&ToggleButton, &Children)>();
 
-    for (toggle_button, children) in query {
-        let get_label = &*toggle_button.get_label;
-        set_texts.push((children[0], get_label(res)));
-    }
+    // for (toggle_button, children) in query {
+    //     let get_label = &*toggle_button.get_label;
+    //     set_texts.push((children[0], get_label(world)));
+    // }
 
-    // cannot mutate Text while iterating over query
-    for (ent, s) in set_texts.drain(..) {
-        let mut text = world.get_mut::<Text>(ent).unwrap();
-        text.value = s;
-    }
+    // // cannot mutate Text while iterating over query
+    // for (ent, s) in set_texts.drain(..) {
+    //     let mut text = world.get_mut::<Text>(ent).unwrap();
+    //     text.value = s;
+    // }
 }

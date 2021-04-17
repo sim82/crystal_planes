@@ -64,7 +64,7 @@ struct Plane {
 pub struct QuadRenderMesh;
 
 fn setup(
-    commands: &mut Commands,
+    mut commands: Commands,
     mut pipelines: ResMut<Assets<PipelineDescriptor>>,
     mut shaders: ResMut<Assets<Shader>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -92,7 +92,7 @@ fn setup(
 
     // Setup our world
     commands
-        .spawn(Camera3dBundle {
+        .spawn_bundle(PerspectiveCameraBundle {
             transform: Transform::from_matrix(Mat4::face_toward(
                 Vec3::new(10.0, 5.0, 40.0),
                 Vec3::new(10.0, 5.0, 0.0),
@@ -100,7 +100,7 @@ fn setup(
             )),
             ..Default::default()
         })
-        .with(bevy_fly_camera::FlyCamera {
+        .insert(bevy_fly_camera::FlyCamera {
             mouse_drag: true,
             sensitivity: 8.0,
             ..Default::default()
@@ -168,7 +168,7 @@ fn setup(
 
             let mesh_handle = meshes.add(mesh);
             commands
-                .spawn(MeshBundle {
+                .spawn_bundle(MeshBundle {
                     mesh: mesh_handle.clone(),
                     render_pipelines: RenderPipelines::from_pipelines(
                         vec![render_pipeline.clone()],
@@ -176,16 +176,16 @@ fn setup(
 
                     ..Default::default()
                 })
-                .with(material.clone())
-                .with(QuadRenderMesh);
+                .insert(material.clone())
+                .insert(QuadRenderMesh);
 
             for p in planes.iter() {
                 // glue local Plane component (ToDo: rename) to pre-existing 'plane' entities
-                commands.insert(
+                commands.entity(
                     *plane_entities
                         .get(&num_planes)
                         .expect("missing entity for plane index"),
-                    PlaneComponents {
+                ).insert(PlaneComponents {
                         plane: Plane {
                             mesh_handle: mesh_handle.clone(),
                             indices: [p + 0, p + 1, p + 2, p + 3],

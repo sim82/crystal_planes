@@ -42,13 +42,13 @@ fn setup(mut octants: ResMut<octree::Octants>, mut vis_info: ResMut<OctreeVisInf
 }
 
 fn vis_update_system(
-    commands: &mut Commands,
+    mut commands: Commands,
     mut vis_info: ResMut<OctreeVisInfo>,
     octants: Res<octree::Octants>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut query: Query<(Mut<Visible>, &octree::OctantId, Entity)>,
-    mut quad_query: Query<(Mut<Visible>, &super::quad_render::QuadRenderMesh)>,
+    mut query: Query<(&mut Visible, &octree::OctantId, Entity)>,
+    mut quad_query: Query<(&mut Visible, &super::quad_render::QuadRenderMesh)>,
 ) {
     let root = match vis_info.root {
         Some(root) => root,
@@ -73,12 +73,12 @@ fn vis_update_system(
                 let color =
                     crate::util::hsv_to_rgb(thread_rng().gen_range(0f32, 360f32), 1f32, 1f32);
                 let cube_material_handle = materials.add(StandardMaterial {
-                    albedo: Color::rgba(color.x, color.y, color.z, 1.0),
+                    base_color: Color::rgba(color.x, color.y, color.z, 1.0),
                     ..Default::default()
                 });
 
                 commands
-                    .spawn(PbrBundle {
+                    .spawn_bundle(PbrBundle {
                         mesh,
                         material: cube_material_handle,
                         transform: Transform::from_translation(
@@ -91,7 +91,7 @@ fn vis_update_system(
                         },
                         ..Default::default()
                     })
-                    .with(id);
+                    .insert(id);
 
                 num += 1;
             }
@@ -139,6 +139,7 @@ impl Plugin for OctreeRenderPlugin {
         app.init_resource::<octree::Octants>()
             .init_resource::<OctreeVisInfo>()
             .add_startup_system_to_stage("renderer", setup.system())
-            .add_system(vis_update_system.system());
+            // .add_system(vis_update_system.system())
+            ;
     }
 }

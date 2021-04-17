@@ -21,7 +21,7 @@ mod util;
 
 /// This example illustrates how to create a custom material asset and a shader that uses that material
 fn main() {
-    let planes_stage = SystemStage::serial()
+    let planes_stage = SystemStage::single_threaded()
         .with_system(setup.system())
         .with_system(setup_bevy.system());
     App::build()
@@ -31,18 +31,18 @@ fn main() {
         // .add_plugin(PrintDiagnosticsPlugin::default())
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
         .add_startup_stage("planes", planes_stage)
-        .add_startup_stage_after("planes", "renderer", SystemStage::serial())
+        .add_startup_stage_after("planes", "renderer", SystemStage::single_threaded())
         .add_plugin(quad_render::QuadRenderPlugin::default())
         .add_plugin(octree_render::OctreeRenderPlugin::default())
         //.add_system(light_move_system.system())
-        .add_system_to_stage(stage::POST_UPDATE, light_update_system.system())
+        .add_system_to_stage(CoreStage::PostUpdate, light_update_system.system())
         .init_resource::<LightUpdateState>()
         .add_system(demo_system.system())
         .init_resource::<DemoSystemState>()
         .add_plugin(hud::HudPlugin)
         .add_system(rotator_system.system())
         .init_resource::<RotatorSystemState>()
-        .add_resource(WinitConfig {
+        .insert_resource(WinitConfig {
             return_from_run: true,
         })
         .add_system(rad_to_render_update.system())
@@ -56,7 +56,7 @@ fn main() {
     println!("run returned");
 }
 
-fn setup(commands: &mut Commands) {
+fn setup(mut commands: Commands) {
     let bm = map::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
     let bm = Box::new(map::DenseBlockmap::from_bitmap(&*bm));
     let mut planes = map::PlanesSep::new();
@@ -69,16 +69,16 @@ fn setup(commands: &mut Commands) {
     let (front_buf, rad_to_render_recv) =
         rad::worker::spawn_rad_update(plane_scene.clone(), render_to_rad_recv);
 
+    commands.insert_resource(plane_scene);
+    // .insert_resource(extents)
     commands
-        .insert_resource(plane_scene)
-        // .insert_resource(extents)
-        .insert_resource(front_buf.clone())
-        .insert_resource(Mutex::new(render_to_rad_send))
-        .insert_resource(Mutex::new(rad_to_render_recv))
-        .spawn((PointLight::default(),));
+        .insert_resource(front_buf.clone());
+        commands.insert_resource(Mutex::new(render_to_rad_send));
+        commands.insert_resource(Mutex::new(rad_to_render_recv));
+        commands.spawn().insert(PointLight::default(),);
 
     for i in 0..num_planes {
-        commands.spawn((rad::PlaneIndex { buf_index: i },));
+        commands.spawn().insert(rad::PlaneIndex { buf_index: i },);
     }
 }
 
@@ -103,51 +103,51 @@ fn rotator_system(
 
 // stupid name for a system...
 fn setup_bevy(
-    commands: &mut Commands,
+    mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let cube_handle = meshes.add(Mesh::from(shape::Cube { size: 1.0 }));
     let cube_material_handle = materials.add(StandardMaterial {
-        albedo: Color::rgb(0.5, 0.4, 0.3),
+        base_color: Color::rgb(0.5, 0.4, 0.3),
         ..Default::default()
     });
 
     let sphere_handle = meshes.add(Mesh::from(shape::Icosphere::default()));
     let sphere_material_handle = materials.add(StandardMaterial {
-        albedo: Color::rgb(1.0, 0.9, 0.8),
+        base_color: Color::rgb(1.0, 0.9, 0.8),
         ..Default::default()
     });
 
     commands
         // parent cube
-        .spawn(PbrBundle {
+        .spawn_bundle(PbrBundle {
             mesh: cube_handle,
             material: cube_material_handle,
             transform: Transform::from_translation(Vec3::new(0.0, 20.0, 0.0)),
             ..Default::default()
         })
-        .with(Rotator)
+        .insert(Rotator)
         .with_children(|parent| {
             // child cube
             parent
-                .spawn(PbrBundle {
+                .spawn_bundle(PbrBundle {
                     mesh: sphere_handle,
                     material: sphere_material_handle,
                     transform: Transform::from_translation(Vec3::new(0.0, 0.0, 30.0)),
                     ..Default::default()
                 })
-                .with(RadPointLight {
+                .insert(RadPointLight {
                     color: Vec3::new(1.0, 0.9, 0.8),
-                })
+                });
                 // light
-                .spawn(LightBundle {
+                parent.spawn_bundle(LightBundle {
                     transform: Transform::from_translation(Vec3::new(0.0, 0.0, 25.0)),
                     ..Default::default()
                 });
-        })
+        });
         // camera
-        .spawn(Camera3dBundle {
+        commands.spawn_bundle(PerspectiveCameraBundle {
             transform: Transform::from_matrix(Mat4::face_toward(
                 Vec3::new(5.0, 10.0, 10.0),
                 Vec3::new(0.0, 0.0, 0.0),
@@ -261,7 +261,7 @@ fn demo_system(
     time: Res<Time>,
     rad_update_channel: Res<Mutex<Sender<rad::com::RenderToRad>>>,
 ) {
-    state.cycle_timer.tick(time.delta_seconds());
+    state.cycle_timer.tick(time.delta());
     if state.cycle && state.cycle_timer.just_finished() {
         rad_update_channel
             .lock()
