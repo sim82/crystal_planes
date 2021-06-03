@@ -253,6 +253,6 @@ pub fn hsv_to_rgb(h: f32, s: f32, v: f32) -> Vec3 {
     } else if h >= 5. && h < 6. {
         Vec3::new(v, p, q)
     } else {
-        Vec3::zero()
+        Vec3::ZERO
     }
 }

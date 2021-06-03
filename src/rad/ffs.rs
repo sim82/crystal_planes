@@ -115,7 +115,7 @@ pub fn build_formfactors(
                 let dn = (p1f - p2f).normalize();
                 let d2 = (p1f - p2f).length_squared(); // uhm, will the compiler optimize the two calls?
 
-                let ff1 = 0.0f32.max(norm1f.dot(Vec3::zero() - dn));
+                let ff1 = 0.0f32.max(norm1f.dot(Vec3::ZERO - dn));
                 let ff2 = 0.0f32.max(norm2f.dot(dn));
 
                 let ff = (ff1 * ff2) / (3.1415 * d2);
@@ -185,7 +185,7 @@ impl Iterator for FormfactorBuildIterator {
             let dn = (p1f - p2f).normalize();
             let d2 = (p1f - p2f).length_squared(); // uhm, will the compiler optimize the two calls?
 
-            let ff1 = 0.0f32.max(norm1f.dot(Vec3::zero() - dn));
+            let ff1 = 0.0f32.max(norm1f.dot(Vec3::ZERO - dn));
             let ff2 = 0.0f32.max(norm2f.dot(dn));
 
             let ff = (ff1 * ff2) / (3.1415 * d2);
@@ -323,10 +323,7 @@ impl<'a> Iterator for SplitAlignedIterator<'a> {
 
 impl Extent {
     fn new(start: u32, ffs: Vec<f32>) -> Self {
-        Extent {
-            start: start,
-            ffs: ffs,
-        }
+        Extent { start, ffs }
     }
 
     #[allow(dead_code)]

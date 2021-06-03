@@ -26,7 +26,7 @@ impl Default for OctreeVisInfo {
 
 fn setup(mut octants: ResMut<octree::Octants>, mut vis_info: ResMut<OctreeVisInfo>) {
     if vis_info.root.is_none() {
-        vis_info.root = octants.load_map("assets/maps/hidden_ramp.txt");
+        vis_info.root = octants.load_map("projects/crystal_planes/assets/maps/hidden_ramp.txt");
         if !vis_info.root.is_some() {
             panic!("vis_info root not set and failed to load from map");
         }

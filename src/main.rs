@@ -21,6 +21,7 @@ mod util;
 
 /// This example illustrates how to create a custom material asset and a shader that uses that material
 fn main() {
+    // if !false {
     let planes_stage = SystemStage::single_threaded()
         .with_system(setup.system())
         .with_system(setup_bevy.system());
@@ -33,7 +34,7 @@ fn main() {
         .add_startup_stage("planes", planes_stage)
         .add_startup_stage_after("planes", "renderer", SystemStage::single_threaded())
         .add_plugin(quad_render::QuadRenderPlugin::default())
-        .add_plugin(octree_render::OctreeRenderPlugin::default())
+        //.add_plugin(octree_render::OctreeRenderPlugin::default())
         //.add_system(light_move_system.system())
         .add_system_to_stage(CoreStage::PostUpdate, light_update_system.system())
         .init_resource::<LightUpdateState>()
@@ -47,17 +48,24 @@ fn main() {
         })
         .add_system(rad_to_render_update.system())
         .add_startup_system(setup_diagnostic_system.system())
+        // .add_startup_system(custom_attribute::setup.system())
         // .add_system_to_stage("background", test_background.system())
         // .add_system_to_stage("background", test_background2.system())
         // .add_plugin(mesh_custom_attribute::TestPlugin)
         // .add_system(swap_buffers.system())
         .run();
-
+    // } else {
+    //     App::build()
+    //         .add_plugins(DefaultPlugins)
+    //         .add_startup_system(custom_attribute::setup.system())
+    //         .run();
+    // }
     println!("run returned");
 }
 
 fn setup(mut commands: Commands) {
-    let bm = map::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
+    let bm = map::read_map("projects/crystal_planes/assets/maps/hidden_ramp.txt")
+        .expect("could not read file");
     let bm = Box::new(map::DenseBlockmap::from_bitmap(&*bm));
     let mut planes = map::PlanesSep::new();
     planes.create_planes(&*bm);
@@ -71,14 +79,13 @@ fn setup(mut commands: Commands) {
 
     commands.insert_resource(plane_scene);
     // .insert_resource(extents)
-    commands
-        .insert_resource(front_buf.clone());
-        commands.insert_resource(Mutex::new(render_to_rad_send));
-        commands.insert_resource(Mutex::new(rad_to_render_recv));
-        commands.spawn().insert(PointLight::default(),);
+    commands.insert_resource(front_buf.clone());
+    commands.insert_resource(Mutex::new(render_to_rad_send));
+    commands.insert_resource(Mutex::new(rad_to_render_recv));
+    commands.spawn().insert(PointLight::default());
 
     for i in 0..num_planes {
-        commands.spawn().insert(rad::PlaneIndex { buf_index: i },);
+        commands.spawn().insert(rad::PlaneIndex { buf_index: i });
     }
 }
 
@@ -140,21 +147,21 @@ fn setup_bevy(
                 .insert(RadPointLight {
                     color: Vec3::new(1.0, 0.9, 0.8),
                 });
-                // light
-                parent.spawn_bundle(LightBundle {
-                    transform: Transform::from_translation(Vec3::new(0.0, 0.0, 25.0)),
-                    ..Default::default()
-                });
+            // light
+            parent.spawn_bundle(PointLightBundle {
+                transform: Transform::from_translation(Vec3::new(0.0, 0.0, 25.0)),
+                ..Default::default()
+            });
         });
-        // camera
-        commands.spawn_bundle(PerspectiveCameraBundle {
-            transform: Transform::from_matrix(Mat4::face_toward(
-                Vec3::new(5.0, 10.0, 10.0),
-                Vec3::new(0.0, 0.0, 0.0),
-                Vec3::new(0.0, 1.0, 0.0),
-            )),
-            ..Default::default()
-        });
+    // camera
+    commands.spawn_bundle(PerspectiveCameraBundle {
+        transform: Transform::from_matrix(Mat4::face_toward(
+            Vec3::new(5.0, 10.0, 10.0),
+            Vec3::new(0.0, 0.0, 0.0),
+            Vec3::new(0.0, 1.0, 0.0),
+        )),
+        ..Default::default()
+    });
 }
 // TODO: build from default components
 struct RadPointLight {
@@ -181,7 +188,7 @@ fn _light_move_system(
     rad_update_channel: Res<Mutex<Sender<rad::com::RenderToRad>>>,
     mut point_light: Mut<PointLight>,
 ) {
-    let mut m = Vec3::zero();
+    let mut m = Vec3::ZERO;
     if keyboard_input.pressed(KeyCode::Left) {
         m += Vec3::new(-1f32, 0f32, 0f32);
     }
@@ -195,7 +202,7 @@ fn _light_move_system(
         m += Vec3::new(0f32, 0f32, 1f32);
     }
     // println!("light move: {:?}", m);
-    if m != Vec3::zero() {
+    if m != Vec3::ZERO {
         point_light.pos += m;
         rad_update_channel
             .lock()
@@ -322,6 +329,116 @@ fn rad_to_render_update(
     }
 }
 
+// mod custom_attribute {
+
+//     use bevy::{
+//         prelude::*,
+//         render::{
+//             mesh::VertexAttributeValues,
+//             pipeline::{PipelineDescriptor, RenderPipeline},
+//             shader::{ShaderStage, ShaderStages},
+//         },
+//     };
+
+//     pub fn setup(
+//         mut commands: Commands,
+//         mut pipelines: ResMut<Assets<PipelineDescriptor>>,
+//         mut shaders: ResMut<Assets<Shader>>,
+//         mut meshes: ResMut<Assets<Mesh>>,
+//     ) {
+//         const VERTEX_SHADER: &str = r#"
+//         #version 450
+//         layout(location = 0) in vec3 Vertex_Position;
+//         layout(location = 1) in vec3 Vertex_Color;
+//         layout(location = 0) out vec3 v_color;
+
+//         layout(set = 0, binding = 0) uniform CameraViewProj {
+//             mat4 ViewProj;
+//         };
+//         layout(set = 1, binding = 0) uniform Transform {
+//             mat4 Model;
+//         };
+//         void main() {
+//             gl_Position = ViewProj * Model * vec4(Vertex_Position, 1.0);
+//             v_color = Vertex_Color;
+//         }
+//         "#;
+
+//         const FRAGMENT_SHADER: &str = r#"
+//         #version 450
+//         layout(location = 0) out vec4 o_Target;
+//         layout(location = 0) in vec3 v_color;
+
+//         void main() {
+//             o_Target = vec4(v_color, 1.0);
+//         }
+//         "#;
+
+//         // Create a new shader pipeline
+//         let pipeline_handle = pipelines.add(PipelineDescriptor::default_config(ShaderStages {
+//             vertex: shaders.add(Shader::from_glsl(ShaderStage::Vertex, VERTEX_SHADER)),
+//             fragment: Some(shaders.add(Shader::from_glsl(ShaderStage::Fragment, FRAGMENT_SHADER))),
+//         }));
+
+//         // create a generic cube
+//         let mut cube_with_vertex_colors = Mesh::from(shape::Cube { size: 2.0 });
+
+//         // insert our custom color attribute with some nice colors!
+//         cube_with_vertex_colors.set_attribute(
+//             // name of the attribute
+//             "Vertex_Color",
+//             // the vertex attributes, represented by `VertexAttributeValues`
+//             // NOTE: the attribute count has to be consistent across all attributes, otherwise bevy
+//             // will panic.
+//             VertexAttributeValues::from(vec![
+//                 // top
+//                 [0.79, 0.73, 0.07],
+//                 [0.74, 0.14, 0.29],
+//                 [0.08, 0.55, 0.74],
+//                 [0.20, 0.27, 0.29],
+//                 // bottom
+//                 [0.79, 0.73, 0.07],
+//                 [0.74, 0.14, 0.29],
+//                 [0.08, 0.55, 0.74],
+//                 [0.20, 0.27, 0.29],
+//                 // right
+//                 [0.79, 0.73, 0.07],
+//                 [0.74, 0.14, 0.29],
+//                 [0.08, 0.55, 0.74],
+//                 [0.20, 0.27, 0.29],
+//                 // left
+//                 [0.79, 0.73, 0.07],
+//                 [0.74, 0.14, 0.29],
+//                 [0.08, 0.55, 0.74],
+//                 [0.20, 0.27, 0.29],
+//                 // front
+//                 [0.79, 0.73, 0.07],
+//                 [0.74, 0.14, 0.29],
+//                 [0.08, 0.55, 0.74],
+//                 [0.20, 0.27, 0.29],
+//                 // back
+//                 [0.79, 0.73, 0.07],
+//                 [0.74, 0.14, 0.29],
+//                 [0.08, 0.55, 0.74],
+//                 [0.20, 0.27, 0.29],
+//             ]),
+//         );
+//         // cube
+//         commands.spawn_bundle(MeshBundle {
+//             mesh: meshes.add(cube_with_vertex_colors), // use our cube with vertex colors
+//             render_pipelines: RenderPipelines::from_pipelines(vec![RenderPipeline::new(
+//                 pipeline_handle,
+//             )]),
+//             transform: Transform::from_xyz(0.0, 0.0, 0.0),
+//             ..Default::default()
+//         });
+//         // // camera
+//         // commands.spawn_bundle(PerspectiveCameraBundle {
+//         //     transform: Transform::from_xyz(3.0, 5.0, -8.0).looking_at(Vec3::ZERO, Vec3::Y),
+//         //     ..Default::default()
+//         // });
+//     }
+// }
 // fn test_background() {
 //     info!("background");
 //     // std::thread::sleep(std::time::Duration::from_secs(1))

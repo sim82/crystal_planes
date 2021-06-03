@@ -117,7 +117,7 @@ impl CommonData {
                 }
             }
         } else {
-            self.emit.iter_mut().for_each(|v| *v = Vec3::zero())
+            self.emit.iter_mut().for_each(|v| *v = Vec3::ZERO)
         }
     }
 }
@@ -566,7 +566,7 @@ pub fn spawn_rad_update(
             // scene.diffuse[i] = Vector3::new(color.0, color.1, color.2);
         }
     }
-    let emit = vec![Vec3::zero(); num_planes];
+    let emit = vec![Vec3::ZERO; num_planes];
     let front_buf_clone = front_buf.clone();
     let common = CommonData {
         plane_scene,
