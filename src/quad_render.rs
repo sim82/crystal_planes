@@ -11,6 +11,8 @@ use bevy::{
         shader::{ShaderStage, ShaderStages},
     },
 };
+use tracing::info;
+
 pub const ATTRIBUTE_COLOR: &'static str = "Vertex_Color";
 
 // FIXME: this is only defined here because apply_frontbuf directly needs to modify it. Implementation should be moved from main.rs
@@ -73,6 +75,7 @@ fn setup(
     plane_scene: Res<map::PlaneScene>,
     query: Query<(Entity, &rad::PlaneIndex)>,
 ) {
+    info!("QuadRender setup");
     // Create a new shader pipeline
     let pipeline_handle = pipelines.add(PipelineDescriptor::default_config(ShaderStages {
         vertex: shaders.add(Shader::from_glsl(ShaderStage::Vertex, VERTEX_SHADER)),
@@ -181,17 +184,18 @@ fn setup(
 
             for p in planes.iter() {
                 // glue local Plane component (ToDo: rename) to pre-existing 'plane' entities
-                commands.entity(
-                    *plane_entities
-                        .get(&num_planes)
-                        .expect("missing entity for plane index"),
-                ).insert(PlaneComponents {
+                commands
+                    .entity(
+                        *plane_entities
+                            .get(&num_planes)
+                            .expect("missing entity for plane index"),
+                    )
+                    .insert(PlaneComponents {
                         plane: Plane {
                             mesh_handle: mesh_handle.clone(),
                             indices: [p + 0, p + 1, p + 2, p + 3],
                         },
-                    },
-                );
+                    });
                 num_planes += 1;
             }
         }
@@ -264,6 +268,7 @@ fn apply_frontbuf(
     if !fb_state.updated {
         return;
     }
+    // info!("apply_frontbuf");
     fb_state.updated = false;
     let mut mesh_handle = Handle::<Mesh>::default();
     let mut new_vs = Vec::new();
