@@ -1,23 +1,19 @@
 use crate::map;
 use crate::rad;
-use bevy::asset::Asset;
-use bevy::render::draw::OutsideFrustum;
+
 use bevy::render::mesh::Indices;
-use bevy::render::shader::ShaderDefs;
+
 use bevy::{
     prelude::*,
-    reflect::TypeUuid,
     render::{
         mesh::{shape, VertexAttributeValues},
         pipeline::{PipelineDescriptor, RenderPipeline},
-        render_graph::{base, AssetRenderResourcesNode, RenderGraph},
-        renderer::RenderResources,
         shader::{ShaderStage, ShaderStages},
     },
 };
 use tracing::info;
 
-pub const ATTRIBUTE_COLOR: &'static str = "Vertex_Color";
+pub const ATTRIBUTE_COLOR: &str = "Vertex_Color";
 
 // FIXME: this is only defined here because apply_frontbuf directly needs to modify it. Implementation should be moved from main.rs
 #[derive(Default)]
@@ -193,7 +189,7 @@ fn setup(
                     .insert_bundle(PlaneComponents {
                         plane: Plane {
                             mesh_handle: mesh_handle.clone(),
-                            indices: [p + 0, p + 1, p + 2, p + 3],
+                            indices: [*p, p + 1, p + 2, p + 3],
                         },
                     });
                 num_planes += 1;

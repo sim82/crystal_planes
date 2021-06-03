@@ -11,7 +11,6 @@ use std::{
     fmt::Debug,
     io::{BufReader, BufWriter},
     sync::Arc,
-    vec::IntoIter,
 };
 fn normal_cull(pl1: &Plane, pl2: &Plane) -> bool {
     let d1 = pl1.dir;
@@ -97,9 +96,7 @@ pub fn build_formfactors(
                 plane1.cell.z as f32,
             );
             let mut tmp = Vec::new();
-            // println!("{}", i);
-            for j in 0..i {
-                let plane2 = &planes[j];
+            for (j, plane2) in planes[0..i].iter().enumerate() {
                 let norm2 = plane2.dir.get_normal_i();
                 let norm2f = Vec3::new(norm2.x as f32, norm2.y as f32, norm2.z as f32);
                 let p2f = Vec3::new(
@@ -118,7 +115,7 @@ pub fn build_formfactors(
                 let ff1 = 0.0f32.max(norm1f.dot(Vec3::ZERO - dn));
                 let ff2 = 0.0f32.max(norm2f.dot(dn));
 
-                let ff = (ff1 * ff2) / (3.1415 * d2);
+                let ff = (ff1 * ff2) / (std::f32::consts::PI * d2);
                 let dist_cull = ff < 5e-6;
 
                 if !dist_cull
@@ -139,6 +136,7 @@ pub struct FormfactorBuildIterator {
     bitmap: Arc<Box<dyn Bitmap + Send + Sync>>,
 }
 impl FormfactorBuildIterator {
+    #[allow(dead_code)]
     pub fn from_plane_scene(scene: &PlaneScene) -> Self {
         let planes = scene.planes.planes_iter().cloned().collect::<Vec<Plane>>();
         FormfactorBuildIterator {
@@ -188,7 +186,7 @@ impl Iterator for FormfactorBuildIterator {
             let ff1 = 0.0f32.max(norm1f.dot(Vec3::ZERO - dn));
             let ff2 = 0.0f32.max(norm2f.dot(dn));
 
-            let ff = (ff1 * ff2) / (3.1415 * d2);
+            let ff = (ff1 * ff2) / (std::f32::consts::PI * d2);
             let dist_cull = ff < 5e-6;
 
             if !dist_cull
@@ -222,7 +220,7 @@ pub fn sort_formfactors(mut ffs: Vec<(u32, u32, f32)>) -> Vec<(u32, u32, f32)> {
 }
 
 #[allow(dead_code)]
-fn write_ffs_debug(ffs: &Vec<(u32, u32, f32)>) {
+fn write_ffs_debug(ffs: &[(u32, u32, f32)]) {
     let width = ffs.iter().map(|(x, _, _)| *x).max().unwrap_or(0) + 1;
     let height = ffs.iter().map(|(_, y, _)| *y).max().unwrap_or(0) + 1;
     let maxf = ffs
@@ -245,7 +243,8 @@ fn write_ffs_debug(ffs: &Vec<(u32, u32, f32)>) {
     println!("done");
 }
 
-pub fn split_formfactors_old(ff_in: &Vec<(u32, u32, f32)>) -> Vec<Vec<(u32, f32)>> {
+#[allow(dead_code)]
+pub fn split_formfactors_old(ff_in: &[(u32, u32, f32)]) -> Vec<Vec<(u32, f32)>> {
     let _pt = ProfTimer::new("split_formfactors");
     let num = ff_in.iter().map(|(i, _, _)| i).max().unwrap() + 1;
 
@@ -257,14 +256,14 @@ pub fn split_formfactors_old(ff_in: &Vec<(u32, u32, f32)>) -> Vec<Vec<(u32, f32)
     ff_out
 }
 
-pub fn split_formfactors(ff_in: &Vec<(u32, u32, f32)>) -> Vec<Vec<(u32, f32)>> {
+pub fn split_formfactors(mut ff_in: &[(u32, u32, f32)]) -> Vec<Vec<(u32, f32)>> {
     // let mut ff_out_ref = split_formfactors_old(ff_in);
 
     let _pt = ProfTimer::new("split_formfactors2");
     let num = ff_in.iter().map(|(i, _, _)| i).max().unwrap() + 1;
 
     let mut ff_out = vec![Vec::new(); num as usize];
-    let mut ff_in = &ff_in[..];
+    // let mut ff_in = &ff_in[..];
     loop {
         if ff_in.is_empty() {
             break;
@@ -364,7 +363,7 @@ impl Debug for Extent {
     }
 }
 
-fn to_extent(v: &Vec<(u32, f32)>) -> Vec<Extent> {
+fn to_extent(v: &[(u32, f32)]) -> Vec<Extent> {
     let mut cur_ext: Option<(u32, Extent)> = None;
     let mut extents = Vec::new();
 
@@ -388,7 +387,7 @@ fn to_extent(v: &Vec<(u32, f32)>) -> Vec<Extent> {
     extents
 }
 
-pub fn to_extents(ffs: &Vec<Vec<(u32, f32)>>) -> Vec<Vec<Extent>> {
+pub fn to_extents(ffs: &[Vec<(u32, f32)>]) -> Vec<Vec<Extent>> {
     let _pt = ProfTimer::new("to_extents");
     ffs.par_iter().map(|v| to_extent(v)).collect()
 }
@@ -399,6 +398,7 @@ pub struct Extents(pub Vec<Vec<Extent>>);
 const EXTENT_VERSION: &str = "extents v1";
 
 impl Extents {
+    #[allow(dead_code)]
     pub fn load(filename: &str) -> Option<Self> {
         let f = std::fs::File::open(filename).ok()?;
         println!("read from {}", filename);
@@ -428,7 +428,7 @@ impl Extents {
                 }
             }
         }
-        return None;
+        None
     }
 
     pub fn write(&self, filename: &str, scene_tag: &str) {

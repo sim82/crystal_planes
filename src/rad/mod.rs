@@ -70,7 +70,7 @@ pub mod light {
     use crate::{map::PlaneScene, math::prelude::*, util::vec_mul};
     pub fn apply_pointlight(
         emit: &mut Vec<Vec3>,
-        diffuse: &Vec<Vec3>,
+        diffuse: &[Vec3],
         plane_scene: &PlaneScene,
         pos: &Vec3,
         color: &Vec3,
@@ -94,8 +94,9 @@ pub mod light {
                 && dot > 0f32
             {
                 // println!("light");
-                emit[i] =
-                    vec_mul(&diff_color, &color) * dot * (5f32 / (2f32 * 3.1415f32 * len * len));
+                emit[i] = vec_mul(&diff_color, &color)
+                    * dot
+                    * (5f32 / (2f32 * std::f32::consts::PI * len * len));
             } else {
                 emit[i] = Vec3::new(0f32, 0f32, 0f32);
             }

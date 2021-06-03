@@ -4,7 +4,7 @@ use crate::{
 };
 
 use bevy::prelude::*;
-use std::sync::{mpsc::Receiver, mpsc::SendError, mpsc::Sender, Mutex};
+use std::sync::{mpsc::Receiver, mpsc::SendError, mpsc::Sender};
 
 use super::{
     com::{RadToRender, RenderToRad},
