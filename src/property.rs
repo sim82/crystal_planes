@@ -1,49 +1,31 @@
 use bevy::prelude::*;
 use std::collections::{HashMap, VecDeque};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PropertyValue {
     Bool(bool),
     String(String),
 }
 
+#[derive(Debug)]
 pub enum PropertyTransition {
     New(PropertyValue),
     Delete(PropertyValue),
     Change(PropertyValue),
 }
+#[derive(Debug)]
 pub struct PropertyUpdate {
     pub name: String,
     pub transition: PropertyTransition,
 }
 
+#[derive(Default)]
 pub struct PropertyRegistry {
     properties: HashMap<String, PropertyValue>,
     updates: VecDeque<PropertyUpdate>,
 }
 
-impl Default for PropertyRegistry {
-    fn default() -> Self {
-        PropertyRegistry::new()
-    }
-}
-
-impl Drop for PropertyRegistry {
-    fn drop(&mut self) {
-        println!("drop property registry");
-    }
-}
-
 impl PropertyRegistry {
-    pub fn new() -> Self {
-        println!("property registry");
-        let mut properties = HashMap::new();
-        properties.insert("rotator_system.enabled".into(), PropertyValue::Bool(false));
-        PropertyRegistry {
-            properties,
-            updates: VecDeque::new(),
-        }
-    }
     pub fn insert(&mut self, name: &str, new_value: PropertyValue) {
         match self.properties.entry(name.to_string()) {
             std::collections::hash_map::Entry::Occupied(mut e) => {
@@ -85,6 +67,7 @@ impl PropertyRegistry {
 
         match p {
             Some(p) => {
+                println!("push update {}", name);
                 self.updates.push_back(PropertyUpdate {
                     name: name.to_string(),
                     transition: PropertyTransition::Change(p.clone()),

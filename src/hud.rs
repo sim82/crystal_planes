@@ -9,19 +9,19 @@ mod button;
 
 // FIXME: only defined here because hud code directly modifies it. Implementation should be moved from main.rs
 pub struct DemoSystemState {
-    pub cycle: bool,
+    // pub cycle: bool,
     pub cycle_timer: Timer,
-    pub light_enabled: bool,
-    pub light_enabled_target: bool,
+    // pub light_enabled: bool,
+    // pub light_enabled_target: bool,
 }
 
 impl Default for DemoSystemState {
     fn default() -> Self {
         DemoSystemState {
-            cycle: false,
+            // cycle: false,
             cycle_timer: Timer::from_seconds(1f32, true),
-            light_enabled: true,
-            light_enabled_target: true,
+            // light_enabled: true,
+            // light_enabled_target: true,
         }
     }
 }
@@ -124,7 +124,7 @@ fn build_children(
                             "<unknown>".to_string(),
                             TextStyle {
                                 font: font_handle.clone(),
-                                font_size: 24.0,
+                                font_size: 20.0,
                                 color: Color::WHITE,
                             },
                             TextAlignment::default(),
@@ -137,7 +137,7 @@ fn build_children(
                 parent
                     .spawn_bundle(ButtonBundle {
                         style: Style {
-                            size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+                            size: Size::new(Val::Px(120.0), Val::Px(40.0)),
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
                             align_self: AlignSelf::FlexStart,
@@ -158,7 +158,7 @@ fn build_children(
                                 TextStyle {
                                     font: asset_server.load("fonts/FiraSans-Bold.ttf"),
 
-                                    font_size: 40.0,
+                                    font_size: 20.0,
                                     color: Color::rgb(0.8, 0.8, 0.8),
                                 },
                                 TextAlignment::default(),
@@ -194,6 +194,16 @@ fn setup_hud_system2(
             "rotator_system.enabled".to_string(),
             "Stop".to_string(),
             "Start".to_string(),
+        ),
+        HudElement::ToggleButton(
+            "demo_system.light_enabled".to_string(),
+            "disable light".to_string(),
+            "enable light".to_string(),
+        ),
+        HudElement::ToggleButton(
+            "demo_system.cycle".to_string(),
+            "disable cycle".to_string(),
+            "enable cycle".to_string(),
         ),
     ];
 
