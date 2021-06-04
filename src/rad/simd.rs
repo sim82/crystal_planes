@@ -1,6 +1,7 @@
 use super::ffs;
 use bevy::math::prelude::*;
-use packed_simd_2::{f32x16, f32x4, f32x8};
+use packed_simd::{f32x16, f32x4, f32x8};
+
 pub struct ExtentsSimd {
     pub single: Vec<(u32, f32)>,
     vec4_ff: Vec<f32x4>,

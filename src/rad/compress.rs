@@ -1,6 +1,6 @@
 use super::ffs;
 use bevy::math::prelude::*;
-use packed_simd_2::{f32x16, f32x4, f32x8};
+use packed_simd::{f32x16, f32x4, f32x8};
 
 pub struct ExtentsCompressed {
     pub single: Vec<(u32, u8)>,
