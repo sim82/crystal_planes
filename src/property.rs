@@ -1,9 +1,5 @@
 use bevy::prelude::*;
-use std::{
-    collections::{HashMap, VecDeque},
-    marker::PhantomData,
-    sync::atomic::AtomicBool,
-};
+use std::{collections::HashMap, sync::atomic::AtomicBool};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum PropertyValue {
