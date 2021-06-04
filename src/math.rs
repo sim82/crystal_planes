@@ -25,6 +25,7 @@ impl Vec3i {
     pub fn zero() -> Vec3i {
         Vec3i { x: 0, y: 0, z: 0 }
     }
+    #[allow(dead_code)]
     pub fn one() -> Vec3i {
         Vec3i { x: 1, y: 1, z: 1 }
     }

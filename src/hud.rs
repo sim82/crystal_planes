@@ -72,7 +72,7 @@ fn update_hud_system(
                 }
             }
             HudSrc::RenderStatus => {
-                (text.sections[0].value = format!("render status: {}", render_status.text))
+                text.sections[0].value = format!("render status: {}", render_status.text)
             }
             HudSrc::LoadingScreen => (),
         }
@@ -128,7 +128,7 @@ fn setup_hud_system2(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut _materials: ResMut<Assets<ColorMaterial>>,
-    button_materials: Res<button::ButtonMaterials>,
+    _button_materials: Res<button::ButtonMaterials>,
 ) {
     let hud_elements = [
         HudElement::TextWithSource(HudSrc::Diagnostics(
@@ -160,6 +160,7 @@ fn setup_hud_system2(
         .with_children(|parent| build_children(parent, &hud_elements, asset_server));
 }
 
+#[allow(dead_code)]
 fn setup_hud_system(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -243,7 +244,7 @@ fn setup_hud_system(
                     ..Default::default()
                 })
                 .insert(button::ToggleButton::new(
-                    |res| {
+                    |_res| {
                         // let mut rot = res
                         //     .get_resource_mut::<super::quad_render::RotatorSystemState>()
                         //     .unwrap();

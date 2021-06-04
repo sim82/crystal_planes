@@ -221,8 +221,8 @@ fn setup(
         match mesh.attribute(bevy::render::mesh::Mesh::ATTRIBUTE_POSITION) {
             Some(VertexAttributeValues::Float32x3(vs)) => {
                 for v in vs {
-                    let v: Vec3 = v.clone().into();
-                    let v: Vec3 = (*trans * v.extend(1.0)).truncate().into();
+                    let v: Vec3 = (*v).into();
+                    let v: Vec3 = (*trans * v.extend(1.0)).truncate();
                     position.push([v.x, v.y, v.z]);
                 }
             }

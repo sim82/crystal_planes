@@ -53,22 +53,22 @@ fn toggle_button_system(world: &mut World) {
         &Interaction,
         &Handle<ColorMaterial>,
     )>();
-    for (toggle_button, _children, interaction, material) in query.iter(world) {
+    for (toggle_button, _children, interaction, _material) in query.iter(world) {
         match *interaction {
             Interaction::Clicked => {
                 {
                     let action = &*toggle_button.action;
                     action(world);
                 }
-                let button_materials = world.get_resource::<ButtonMaterials>().unwrap();
+                let _button_materials = world.get_resource::<ButtonMaterials>().unwrap();
                 // *material = button_materials.pressed.clone();
             }
             Interaction::Hovered => {
-                let button_materials = world.get_resource::<ButtonMaterials>().unwrap();
+                let _button_materials = world.get_resource::<ButtonMaterials>().unwrap();
                 // *material = button_materials.hovered.clone();
             }
             Interaction::None => {
-                let button_materials = world.get_resource::<ButtonMaterials>().unwrap();
+                let _button_materials = world.get_resource::<ButtonMaterials>().unwrap();
                 // *material = button_materials.normal.clone();
             }
         }

@@ -79,7 +79,7 @@ fn setup(mut commands: Commands) {
 
     commands.insert_resource(plane_scene);
     // .insert_resource(extents)
-    commands.insert_resource(front_buf.clone());
+    commands.insert_resource(front_buf);
     commands.insert_resource(Mutex::new(render_to_rad_send));
     commands.insert_resource(Mutex::new(rad_to_render_recv));
     commands.spawn().insert(PointLight::default());

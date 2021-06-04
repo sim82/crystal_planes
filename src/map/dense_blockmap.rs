@@ -22,7 +22,7 @@ struct Iter<'a> {
 impl<'a> Iter<'a> {
     pub fn new(bm: &'a DenseBlockmap) -> Self {
         Self {
-            bm: bm,
+            bm,
             ix: 0,
             iy: 0,
             iz: 0,
@@ -123,14 +123,11 @@ impl DenseBlockmap {
         // ZI[zm] << (xm + ym * 4),
     }
     pub fn get(&self, x: usize, y: usize, z: usize) -> Option<bool> {
-        match self.block_address(x, y, z) {
-            Some(block) => Some({
-                // SAFE because bounds check is done in block_address
-                let bits = unsafe { *self.blocks.get_unchecked(block) };
-                (bits != 0) && (bits & self.block_mask(x, y, z)) != 0
-            }),
-            None => None,
-        }
+        self.block_address(x, y, z).map(|block| {
+            // SAFE because bounds check is done in block_address
+            let bits = unsafe { *self.blocks.get_unchecked(block) };
+            (bits != 0) && (bits & self.block_mask(x, y, z)) != 0
+        })
     }
     unsafe fn get_unchecked(&self, x: usize, y: usize, z: usize) -> bool {
         let block = self.block_address_unchecked(x, y, z);

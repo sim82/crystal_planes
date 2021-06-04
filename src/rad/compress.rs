@@ -56,7 +56,7 @@ fn to_bucket(out: &mut [u8], v: &[f32], bins: &[f32; 256]) {
 }
 
 impl ExtentsCompressed {
-    pub fn from_extents(extents: &Vec<ffs::Extent>) -> ExtentsCompressed {
+    pub fn from_extents(extents: &[ffs::Extent]) -> ExtentsCompressed {
         let mut vec16 = Vec::new();
         let mut vec8 = Vec::new();
         let mut vec4 = Vec::new();

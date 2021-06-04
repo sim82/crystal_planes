@@ -301,6 +301,12 @@ impl PlanesSep {
     }
 }
 
+impl Default for PlanesSep {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PlanesSep {
     pub fn create_planes(&mut self, bitmap: &dyn Bitmap) {
         let mut zx_planes = Vec::<Plane>::new();
@@ -419,8 +425,8 @@ impl PlanesSep {
 
 pub fn to_height(c: char) -> i32 {
     match c {
-        x if x >= 'a' && x <= 'z' => 1 + x as i32 - 'a' as i32,
-        x if x >= '0' && x <= '9' => 2 + 'z' as i32 - 'a' as i32 + c as i32 - '0' as i32,
+        x if ('a'..='z').contains(&x) => 1 + x as i32 - 'a' as i32,
+        x if ('0'..='9').contains(&x) => 2 + 'z' as i32 - 'a' as i32 + c as i32 - '0' as i32,
         _ => 0,
     }
 }
@@ -438,7 +444,7 @@ pub fn read_map_slice(reader: &mut dyn std::io::BufRead, size: Vec2i) -> std::io
         // println!("{} {}", line.len(), width);
         assert!(line.len() == size.x() as usize);
 
-        slice.push(line.chars().map(to_height).map(|x| x).collect());
+        slice.push(line.chars().map(to_height).collect());
     }
     Ok(MapSlice(slice))
 }

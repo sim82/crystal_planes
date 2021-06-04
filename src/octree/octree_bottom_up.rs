@@ -47,7 +47,7 @@ impl Default for Octants {
 }
 
 impl Octants {
-    pub fn new(&mut self, scale: u32, coord: IdxPath) -> OctantId {
+    pub fn insert_octant(&mut self, scale: u32, coord: IdxPath) -> OctantId {
         assert!(scale >= 1);
         let id = OctantId(self.octants.len() as u32);
         self.octants.push(Octant {
@@ -79,7 +79,7 @@ pub fn scale1_voxels(octants: &mut Octants, points: &[Point3i]) -> Vec<OctantId>
 
         let id = coord_to_octant
             .entry(coord)
-            .or_insert_with(|| octants.new(1, coord));
+            .or_insert_with(|| octants.insert_octant(1, coord));
 
         let level_coord = z & 0b111;
         let octant = octants.get_mut(*id);
@@ -104,7 +104,7 @@ pub fn create_octants_bottom_up(octantss: &mut Octants, points: &[Point3i]) -> O
 
             let octant_out = octants_out
                 .entry(coord)
-                .or_insert_with(|| octantss.new(level, coord));
+                .or_insert_with(|| octantss.insert_octant(level, coord));
             octantss.get_mut(*octant_out).children[level_coord] = Voxel::Octant(*id);
             // octant_out.children[level_coord] = Child::Octant(oc)
         }
@@ -151,22 +151,22 @@ pub fn generate_points(octants: &Octants, root: OctantId, offset: &Point3i) -> V
 
 pub fn zorder(p: &Point3i) -> usize {
     assert!(p.x >= 0 && p.y >= 0 && p.z >= 0);
-    let mut x = p.x as u32;
-    let mut y = p.y as u32;
-    let mut z = p.z as u32;
+    let mut x_positive = p.x as u32;
+    let mut y_positive = p.y as u32;
+    let mut z_positive = p.z as u32;
 
     let mut rout: usize = 0;
     let mut n = 0;
-    while x > 0 || y > 0 || z > 0 {
+    while x_positive > 0 || y_positive > 0 || z_positive > 0 {
         rout <<= 1;
-        rout |= (z & 0b1) as usize;
+        rout |= (z_positive & 0b1) as usize;
         rout <<= 1;
-        rout |= (y & 0b1) as usize;
+        rout |= (y_positive & 0b1) as usize;
         rout <<= 1;
-        rout |= (x & 0b1) as usize;
-        x >>= 1;
-        y >>= 1;
-        z >>= 1;
+        rout |= (x_positive & 0b1) as usize;
+        x_positive >>= 1;
+        y_positive >>= 1;
+        z_positive >>= 1;
         n += 1;
     }
     let mut out = 0;
@@ -320,7 +320,7 @@ fn test_bottom_up2() {
     assert_eq!(points.len(), points_gen.len());
 
     for gen in points_gen.iter() {
-        assert!(points.iter().find(|x| **x == *gen).is_some());
+        assert!(points.iter().any(|x| *x == *gen));
     }
 
     // println!("{:?}", octants.get(id));

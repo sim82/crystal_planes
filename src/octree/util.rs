@@ -1,13 +1,13 @@
 use crate::map;
 use crate::math::prelude::*;
 
-use super::octree;
+use crate::octree;
 
 pub trait OctreeLoad {
     fn load_map(&mut self, filename: &str) -> Option<octree::OctantId>;
 }
 
-impl OctreeLoad for super::octree::Octants {
+impl OctreeLoad for crate::octree::Octants {
     fn load_map(&mut self, filename: &str) -> Option<octree::OctantId> {
         let bm = map::read_map(filename).ok()?;
 

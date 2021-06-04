@@ -27,7 +27,7 @@ impl Default for OctreeVisInfo {
 fn setup(mut octants: ResMut<octree::Octants>, mut vis_info: ResMut<OctreeVisInfo>) {
     if vis_info.root.is_none() {
         vis_info.root = octants.load_map("projects/crystal_planes/assets/maps/hidden_ramp.txt");
-        if !vis_info.root.is_some() {
+        if vis_info.root.is_none() {
             panic!("vis_info root not set and failed to load from map");
         }
 
@@ -41,6 +41,7 @@ fn setup(mut octants: ResMut<octree::Octants>, mut vis_info: ResMut<OctreeVisInf
     //     });
 }
 
+#[allow(dead_code)]
 fn vis_update_system(
     mut commands: Commands,
     mut vis_info: ResMut<OctreeVisInfo>,
@@ -87,7 +88,6 @@ fn vis_update_system(
                         visible: Visible {
                             is_transparent: false,
                             is_visible: level == octant.scale,
-                            ..Default::default()
                         },
                         ..Default::default()
                     })

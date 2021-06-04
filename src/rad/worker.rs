@@ -158,6 +158,7 @@ struct RadBuildFormfactors {
     iter: ffs::FormfactorBuildIterator,
     formfactors: Vec<(u32, u32, f32)>,
 }
+#[allow(dead_code)]
 impl RadBuildFormfactors {
     fn new(channels: Channels, common: CommonData) -> Self {
         let iter = ffs::FormfactorBuildIterator::from_plane_scene(&common.plane_scene);
@@ -198,14 +199,14 @@ impl RadUpdate for RadBuildFormfactors {
 
         let rad_start = std::time::Instant::now();
         // println!("iter raw");
-        let r = &mut self.common.back_buf.0.r;
-        let g = &mut self.common.back_buf.0.g;
-        let b = &mut self.common.back_buf.0.b;
-        for i in 0..r.len() {
+        let r_back = &mut self.common.back_buf.0.r;
+        let g_back = &mut self.common.back_buf.0.g;
+        let b_back = &mut self.common.back_buf.0.b;
+        for i in 0..r_back.len() {
             // FIXME: find out how to inplace set all Vec elements.
-            r[i] = 0f32;
-            g[i] = 0f32;
-            b[i] = 0f32;
+            r_back[i] = 0f32;
+            g_back[i] = 0f32;
+            b_back[i] = 0f32;
         }
         let formfactors = &self.formfactors;
         {
@@ -215,11 +216,11 @@ impl RadUpdate for RadBuildFormfactors {
                 let i = *i as usize;
                 let j = *j as usize;
                 let diffuse = self.common.diffuse[i];
-                r[i] += front.r[j] * diffuse.x * *ff;
-                g[i] += front.g[j] * diffuse.y * *ff;
-                b[i] += front.b[j] * diffuse.z * *ff;
+                r_back[i] += front.r[j] * diffuse.x * *ff;
+                g_back[i] += front.g[j] * diffuse.y * *ff;
+                b_back[i] += front.b[j] * diffuse.z * *ff;
             }
-            for i in 0..r.len() {
+            for i in 0..r_back.len() {
                 self.common.back_buf.0.r[i] += self.common.emit[i].x;
                 self.common.back_buf.0.g[i] += self.common.emit[i].y;
                 self.common.back_buf.0.b[i] += self.common.emit[i].z;
@@ -298,18 +299,18 @@ impl RadUpdate for RadPostprocessFormfactors {
 
         if true {
             info!("-> simd");
-            return Some(Box::new(RadGenerateSimdExtents {
+            Some(Box::new(RadGenerateSimdExtents {
                 channels: self.channels,
                 common: self.common,
                 extents,
-            }));
+            }))
         } else {
             info!("-> compressed");
-            return Some(Box::new(RadGenerateCompressedExtents {
+            Some(Box::new(RadGenerateCompressedExtents {
                 channels: self.channels,
                 common: self.common,
                 extents,
-            }));
+            }))
         }
     }
 }
@@ -580,11 +581,8 @@ pub fn spawn_rad_update(
 
     std::thread::spawn(move || {
         let mut update = Box::new(RadTryLoad { channels, common }) as Box<dyn RadUpdate>;
-        loop {
-            match update.update() {
-                Some(new_update) => update = new_update,
-                None => break,
-            }
+        while let Some(new_update) = update.update() {
+            update = new_update
         }
     });
 
@@ -598,21 +596,21 @@ pub fn spawn_rad_update(
 fn rad_preview_on_plain_formfactors(
     channels: &mut Channels,
     common: &mut CommonData,
-    formfactors: &Vec<(u32, u32, f32)>,
+    formfactors: &[(u32, u32, f32)],
 ) {
     let start = std::time::Instant::now();
     loop {
         common.apply_light_updates(&mut channels.render_to_rad);
         let rad_start = std::time::Instant::now();
         // println!("iter raw");
-        let r = &mut common.back_buf.0.r;
-        let g = &mut common.back_buf.0.g;
-        let b = &mut common.back_buf.0.b;
-        for i in 0..r.len() {
+        let r_back = &mut common.back_buf.0.r;
+        let g_back = &mut common.back_buf.0.g;
+        let b_back = &mut common.back_buf.0.b;
+        for i in 0..r_back.len() {
             // FIXME: find out how to inplace set all Vec elements.
-            r[i] = 0f32;
-            g[i] = 0f32;
-            b[i] = 0f32;
+            r_back[i] = 0f32;
+            g_back[i] = 0f32;
+            b_back[i] = 0f32;
         }
         // let formfactors = &self.formfactors;
         {
@@ -622,11 +620,11 @@ fn rad_preview_on_plain_formfactors(
                 let i = *i as usize;
                 let j = *j as usize;
                 let diffuse = common.diffuse[i];
-                r[i] += front.r[j] * diffuse.x * *ff;
-                g[i] += front.g[j] * diffuse.y * *ff;
-                b[i] += front.b[j] * diffuse.z * *ff;
+                r_back[i] += front.r[j] * diffuse.x * *ff;
+                g_back[i] += front.g[j] * diffuse.y * *ff;
+                b_back[i] += front.b[j] * diffuse.z * *ff;
             }
-            for i in 0..r.len() {
+            for i in 0..r_back.len() {
                 common.back_buf.0.r[i] += common.emit[i].x;
                 common.back_buf.0.g[i] += common.emit[i].y;
                 common.back_buf.0.b[i] += common.emit[i].z;
