@@ -1,9 +1,7 @@
-# Rename this file to `config.toml` to enable "fast build" configuration. Please read the notes below.
+# Add the contents of this file to `config.toml` to enable "fast build" configuration. Please read the notes below.
 
 # NOTE: For maximum performance, build using a nightly compiler
 # If you are using rust stable, remove the "-Zshare-generics=y" below.
-[target.'cfg(any(windows, unix))']
-rustflags = ["-Ctarget-feature=+avx2"]
 
 [target.x86_64-unknown-linux-gnu]
 linker = "/usr/bin/clang"
@@ -22,5 +20,3 @@ rustflags = ["-Zshare-generics=y"]
 # In most cases the gains are negligible, but if you are on macos and have slow compile times you should see significant gains.
 #[profile.dev]
 #debug = 1
-
-

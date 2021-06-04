@@ -29,6 +29,7 @@ impl Default for RenderStatus {
 }
 
 #[allow(dead_code)]
+#[derive(Clone)]
 pub enum HudSrc {
     Diagnostics(String, DiagnosticId, bool),
     RenderStatus,
@@ -83,7 +84,81 @@ fn update_hud_system(
         // }
     }
 }
+
+#[derive(Clone)]
+enum HudElement {
+    TextWithSource(HudSrc),
+}
+
 struct RotateButtonText;
+
+fn build_children(
+    parent: &mut ChildBuilder,
+    children: &[HudElement],
+    asset_server: Res<AssetServer>,
+) {
+    let font_handle = asset_server.load("fonts/FiraMono-Medium.ttf");
+    for child in children {
+        match child {
+            HudElement::TextWithSource(hud_src) => {
+                parent
+                    .spawn_bundle(TextBundle {
+                        style: Style {
+                            align_self: AlignSelf::FlexStart,
+                            ..Default::default()
+                        },
+                        text: Text::with_section(
+                            "<unknown>".to_string(),
+                            TextStyle {
+                                font: font_handle.clone(),
+                                font_size: 24.0,
+                                color: Color::WHITE,
+                            },
+                            TextAlignment::default(),
+                        ),
+                        ..Default::default()
+                    })
+                    .insert(hud_src.clone());
+            }
+        }
+    }
+}
+
+fn setup_hud_system2(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut _materials: ResMut<Assets<ColorMaterial>>,
+    button_materials: Res<button::ButtonMaterials>,
+) {
+    let hud_elements = [
+        HudElement::TextWithSource(HudSrc::Diagnostics(
+            "FPS".into(),
+            FrameTimeDiagnosticsPlugin::FPS,
+            false,
+        )),
+        HudElement::TextWithSource(HudSrc::Diagnostics(
+            "Int/s".into(),
+            RAD_INT_PER_SECOND,
+            true,
+        )),
+        HudElement::TextWithSource(HudSrc::RenderStatus),
+    ];
+
+    commands
+        // 2d camera
+        .spawn_bundle(UiCameraBundle::default());
+    commands
+        .spawn_bundle(NodeBundle {
+            style: Style {
+                flex_direction: FlexDirection::ColumnReverse,
+                flex_shrink: 1f32,
+                ..Default::default()
+            },
+            mesh: Handle::default(), // meh, is this the right way to get an invisible flex node?
+            ..Default::default()
+        })
+        .with_children(|parent| build_children(parent, &hud_elements, asset_server));
+}
 
 fn setup_hud_system(
     mut commands: Commands,
@@ -393,7 +468,7 @@ pub struct HudPlugin;
 impl Plugin for HudPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.init_resource::<RenderStatus>()
-            .add_startup_system(setup_hud_system.system())
+            .add_startup_system(setup_hud_system2.system())
             .add_system(update_hud_system.system())
             .add_plugin(button::ButtonPlugin);
     }
