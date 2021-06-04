@@ -9,33 +9,30 @@ use bevy::diagnostic::{Diagnostic, Diagnostics, DiagnosticsPlugin};
 use bevy::{
     diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, render::mesh::shape, winit::WinitConfig,
 };
+use crystal_planes::{
+    hud::{self, DemoSystemState},
+    map,
+    property::{self, PropertyRegistry},
+    quad_render, rad, util,
+};
+
 use rand::{thread_rng, Rng};
-mod hud;
-mod map;
-mod math;
-mod octree;
-mod octree_render;
-mod quad_render;
-mod rad;
-mod util;
 
 /// This example illustrates how to create a custom material asset and a shader that uses that material
 fn main() {
-    // if !false {
     let planes_stage = SystemStage::single_threaded()
         .with_system(setup.system())
         .with_system(setup_bevy.system());
+
     App::build()
-        // .add_stage_after(stage::UPDATE, "background", SystemStage::parallel())
         .add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         // .add_plugin(PrintDiagnosticsPlugin::default())
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
+        .add_plugin(property::PropertyPlugin)
         .add_startup_stage("planes", planes_stage)
         .add_startup_stage_after("planes", "renderer", SystemStage::single_threaded())
         .add_plugin(quad_render::QuadRenderPlugin::default())
-        //.add_plugin(octree_render::OctreeRenderPlugin::default())
-        //.add_system(light_move_system.system())
         .add_system_to_stage(CoreStage::PostUpdate, light_update_system.system())
         .init_resource::<LightUpdateState>()
         .add_system(demo_system.system())
@@ -48,18 +45,8 @@ fn main() {
         })
         .add_system(rad_to_render_update.system())
         .add_startup_system(setup_diagnostic_system.system())
-        // .add_startup_system(custom_attribute::setup.system())
-        // .add_system_to_stage("background", test_background.system())
-        // .add_system_to_stage("background", test_background2.system())
-        // .add_plugin(mesh_custom_attribute::TestPlugin)
-        // .add_system(swap_buffers.system())
+        // .add_startup_system(setup_properties_system.system())
         .run();
-    // } else {
-    //     App::build()
-    //         .add_plugins(DefaultPlugins)
-    //         .add_startup_system(custom_attribute::setup.system())
-    //         .run();
-    // }
     println!("run returned");
 }
 
@@ -89,6 +76,10 @@ fn setup(mut commands: Commands) {
     }
 }
 
+// fn setup_properties_system(mut property_registry: ResMut<PropertyRegistry>) {
+//     property_registry.insert_bool("rotator_system.enabled", false);
+// }
+
 /// this component indicates what entities should rotate
 struct Rotator;
 
@@ -97,14 +88,13 @@ use quad_render::RotatorSystemState;
 /// rotates the parent, which will result in the child also rotating
 fn rotator_system(
     time: Res<Time>,
-    state: Res<RotatorSystemState>,
+    mut property_registry: ResMut<PropertyRegistry>,
     mut query: Query<(&Rotator, &mut Transform)>,
 ) {
-    if !state.run {
-        return;
-    }
-    for (_rotator, mut transform) in query.iter_mut() {
-        transform.rotate(Quat::from_rotation_y(0.5 * time.delta_seconds()));
+    if let Some(true) = property_registry.get_bool("rotator_system.enabled") {
+        for (_rotator, mut transform) in query.iter_mut() {
+            transform.rotate(Quat::from_rotation_y(0.5 * time.delta_seconds()));
+        }
     }
 }
 
@@ -244,18 +234,6 @@ fn light_update_system(
             .unwrap()
             .send(rad::com::RenderToRad::PointLight(0, pos, rad_light.color))
             .unwrap();
-    }
-}
-
-use hud::DemoSystemState;
-impl Default for DemoSystemState {
-    fn default() -> Self {
-        DemoSystemState {
-            cycle: false,
-            cycle_timer: Timer::from_seconds(1f32, true),
-            light_enabled: true,
-            light_enabled_target: true,
-        }
     }
 }
 
