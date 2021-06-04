@@ -1,48 +1,27 @@
 use bevy::prelude::*;
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+    marker::PhantomData,
+    sync::atomic::AtomicBool,
+};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum PropertyValue {
+    None,
     Bool(bool),
     String(String),
-}
-
-#[derive(Debug)]
-pub enum PropertyTransition {
-    New(PropertyValue),
-    Delete(PropertyValue),
-    Change(PropertyValue),
-}
-#[derive(Debug)]
-pub struct PropertyUpdate {
-    pub name: String,
-    pub transition: PropertyTransition,
 }
 
 #[derive(Default)]
 pub struct PropertyRegistry {
     properties: HashMap<String, PropertyValue>,
-    updates: VecDeque<PropertyUpdate>,
+    update_listeners: HashMap<String, Vec<std::sync::Arc<std::sync::atomic::AtomicBool>>>,
 }
 
 impl PropertyRegistry {
     pub fn insert(&mut self, name: &str, new_value: PropertyValue) {
-        match self.properties.entry(name.to_string()) {
-            std::collections::hash_map::Entry::Occupied(mut e) => {
-                self.updates.push_back(PropertyUpdate {
-                    name: name.to_string(),
-                    transition: PropertyTransition::Change(e.get().clone()),
-                });
-                *e.get_mut() = new_value;
-            }
-            std::collections::hash_map::Entry::Vacant(e) => {
-                self.updates.push_back(PropertyUpdate {
-                    name: name.to_string(),
-                    transition: PropertyTransition::New(new_value.clone()),
-                });
-                e.insert(new_value);
-            }
-        }
+        self.properties.insert(name.into(), new_value);
+        self.signal(name);
     }
     pub fn insert_bool(&mut self, name: &str, v: bool) {
         self.insert(name, PropertyValue::Bool(v));
@@ -63,22 +42,17 @@ impl PropertyRegistry {
     }
 
     pub fn get_mut(&mut self, name: &str) -> Option<&mut PropertyValue> {
+        self.signal(name); // FIXME: find some way to call only on success
         let p = self.properties.get_mut(name);
-
         match p {
-            Some(p) => {
-                println!("push update {}", name);
-                self.updates.push_back(PropertyUpdate {
-                    name: name.to_string(),
-                    transition: PropertyTransition::Change(p.clone()),
-                });
-                Some(p)
-            }
+            Some(p) => Some(p),
             None => None,
         }
     }
 
     pub fn get_bool_mut(&mut self, name: &str) -> Option<&mut bool> {
+        self.signal(name); // FIXME: find some way to call only on success
+
         if let Some(p) = self.properties.get_mut(name) {
             match p {
                 PropertyValue::Bool(v) => Some(v),
@@ -88,10 +62,71 @@ impl PropertyRegistry {
             None
         }
     }
-    pub fn drain_updates(&mut self) -> VecDeque<PropertyUpdate> {
-        let mut ret = VecDeque::new();
-        std::mem::swap(&mut self.updates, &mut ret);
-        ret
+
+    fn signal(&mut self, name: &str) {
+        if let Some(listeners) = self.update_listeners.get_mut(name) {
+            // listeners.drain_filter(
+            //     |sender| sender.send(()).is
+            // );
+
+            for listener in listeners {
+                listener.store(true, std::sync::atomic::Ordering::Relaxed)
+            }
+        }
+    }
+
+    pub fn subscribe(&mut self, name: &str) -> std::sync::Arc<std::sync::atomic::AtomicBool> {
+        let b = std::sync::Arc::new(AtomicBool::new(true));
+        match self.update_listeners.entry(name.to_string()) {
+            std::collections::hash_map::Entry::Occupied(mut l) => l.get_mut().push(b.clone()),
+            std::collections::hash_map::Entry::Vacant(e) => {
+                e.insert(vec![b.clone()]);
+            }
+        }
+        b
+    }
+}
+
+pub struct PropertyTracker {
+    pub name: String,
+    current_value: PropertyValue,
+    update_signal: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+}
+
+impl PropertyTracker {
+    pub fn new() -> Self {
+        PropertyTracker {
+            name: String::new(),
+            current_value: PropertyValue::None,
+            update_signal: None,
+        }
+    }
+    pub fn subscribe(&mut self, property_registry: &mut PropertyRegistry, name: &str) {
+        if self.update_signal.is_some() {
+            return;
+        }
+        self.update_signal = Some(property_registry.subscribe(name));
+        self.name = name.to_string();
+    }
+    pub fn get_changed(&mut self, property_registry: &PropertyRegistry) -> Option<&PropertyValue> {
+        if let Some(update_signal) = &self.update_signal {
+            if update_signal.load(std::sync::atomic::Ordering::Relaxed) {
+                update_signal.store(false, std::sync::atomic::Ordering::Relaxed);
+                if let Some(value) = property_registry.get(&self.name) {
+                    if *value != self.current_value {
+                        self.current_value = value.clone();
+                        return Some(&self.current_value);
+                    }
+                }
+            }
+        }
+        None
+    }
+}
+
+impl Default for PropertyTracker {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

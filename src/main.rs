@@ -12,7 +12,7 @@ use bevy::{
 use crystal_planes::{
     hud::{self, DemoSystemState},
     map,
-    property::{self, PropertyRegistry, PropertyTransition, PropertyValue},
+    property::{self, PropertyRegistry, PropertyValue},
     quad_render, rad, util,
 };
 
@@ -35,6 +35,7 @@ fn main() {
         .add_plugin(quad_render::QuadRenderPlugin::default())
         .add_system_to_stage(CoreStage::PostUpdate, light_update_system.system())
         .init_resource::<LightUpdateState>()
+        .add_startup_system(setup_demo_system.system())
         .add_system(demo_system.system())
         .init_resource::<DemoSystemState>()
         .add_plugin(hud::HudPlugin)
@@ -79,7 +80,7 @@ fn setup(mut commands: Commands) {
 fn setup_properties_system(mut property_registry: ResMut<PropertyRegistry>) {
     property_registry.insert_bool("rotator_system.enabled", false);
     property_registry.insert_bool("demo_system.cycle", false);
-    property_registry.insert_bool("demo_system.light_enabled", false);
+    property_registry.insert_bool("demo_system.light_enabled", true);
 }
 
 /// this component indicates what entities should rotate
@@ -242,11 +243,18 @@ fn light_update_system(
 fn rand_color(min: f32, max: f32) -> Vec3 {
     util::hsv_to_rgb(thread_rng().gen_range(min, max), 1f32, 1f32)
 }
-
+fn setup_demo_system(
+    mut state: ResMut<DemoSystemState>,
+    mut property_registry: ResMut<PropertyRegistry>,
+) {
+    state
+        .light_enabled_tracker
+        .subscribe(&mut property_registry, "demo_system.light_enabled");
+}
 fn demo_system(
     mut state: ResMut<DemoSystemState>,
     time: Res<Time>,
-    mut property_registry: ResMut<PropertyRegistry>,
+    property_registry: Res<PropertyRegistry>,
     rad_update_channel: Res<Mutex<Sender<rad::com::RenderToRad>>>,
 ) {
     state.cycle_timer.tick(time.delta());
@@ -263,27 +271,14 @@ fn demo_system(
                 .unwrap();
         }
     }
-
-    for update in property_registry.drain_updates() {
-        // meeeehhhh
-        println!("update: {:?}", update);
-        if update.name == "demo_system.light_enabled" {
-            match (
-                update.transition,
-                property_registry.get_bool("demo_system.light_enabled"),
-            ) {
-                (PropertyTransition::Change(PropertyValue::Bool(old_value)), Some(new_value))
-                    if old_value != *new_value =>
-                {
-                    rad_update_channel
-                        .lock()
-                        .unwrap()
-                        .send(rad::com::RenderToRad::EnablePointlights(*new_value))
-                        .unwrap();
-                }
-                _ => (),
-            }
-        }
+    if let Some(PropertyValue::Bool(v)) =
+        state.light_enabled_tracker.get_changed(&property_registry)
+    {
+        rad_update_channel
+            .lock()
+            .unwrap()
+            .send(rad::com::RenderToRad::EnablePointlights(*v))
+            .unwrap();
     }
 }
 

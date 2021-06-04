@@ -2,6 +2,8 @@ use bevy::{
     diagnostic::{DiagnosticId, Diagnostics, FrameTimeDiagnosticsPlugin},
     prelude::*,
 };
+
+use crate::property::PropertyTracker;
 pub const RAD_INT_PER_SECOND: DiagnosticId =
     DiagnosticId::from_u128(337040787172757619024841343456040760896);
 
@@ -10,6 +12,7 @@ mod button;
 // FIXME: only defined here because hud code directly modifies it. Implementation should be moved from main.rs
 pub struct DemoSystemState {
     // pub cycle: bool,
+    pub light_enabled_tracker: PropertyTracker,
     pub cycle_timer: Timer,
     // pub light_enabled: bool,
     // pub light_enabled_target: bool,
@@ -20,6 +23,7 @@ impl Default for DemoSystemState {
         DemoSystemState {
             // cycle: false,
             cycle_timer: Timer::from_seconds(1f32, true),
+            light_enabled_tracker: PropertyTracker::new(),
             // light_enabled: true,
             // light_enabled_target: true,
         }

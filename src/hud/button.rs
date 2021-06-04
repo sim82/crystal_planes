@@ -46,7 +46,7 @@ fn toggle_button_system(
             &Children,
             &ToggleButton,
         ),
-        // Changed<Interaction>, // FIXME: this is crap
+        Changed<Interaction>, // FIXME: this is crap
     >,
     mut text_query: Query<&mut Text>,
 ) {
