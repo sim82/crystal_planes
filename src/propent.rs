@@ -1,13 +1,18 @@
-pub use super::property::PropertyValue;
-use bevy::{asset::update_asset_storage_system, prelude::*};
+use bevy::prelude::*;
 use std::{
-    cell::Cell,
     collections::{HashMap, HashSet},
     sync::Mutex,
 };
 
 #[derive(Debug, Clone)]
 pub struct PropertyName(pub String);
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum PropertyValue {
+    None,
+    Bool(bool),
+    String(String),
+}
 
 #[derive(Debug)]
 pub struct PropertyUpdateEvent {

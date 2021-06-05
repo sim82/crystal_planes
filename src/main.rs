@@ -12,8 +12,7 @@ use bevy::{
 use crystal_planes::{
     hud::{self, DemoSystemState},
     map,
-    propent::{self, PropentRegistry, PropertyName, PropertyUpdateEvent},
-    property::{self, PropertyRegistry, PropertyTracker, PropertyValue},
+    propent::{self, PropentRegistry, PropertyName, PropertyUpdateEvent, PropertyValue},
     quad_render, rad, util,
 };
 
@@ -30,7 +29,6 @@ fn main() {
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         // .add_plugin(PrintDiagnosticsPlugin::default())
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
-        .add_plugin(property::PropertyPlugin)
         .add_plugin(propent::PropentPlugin)
         .add_startup_stage("planes", planes_stage)
         .add_startup_stage_after("planes", "renderer", SystemStage::single_threaded())
@@ -48,32 +46,9 @@ fn main() {
         })
         .add_system(rad_to_render_update.system())
         .add_startup_system(setup_diagnostic_system.system())
-        // .add_startup_system(setup_properties_system.system())
-        .add_startup_system(setup_change_test.system())
-        // .add_system(change_test.system())
         .run();
     println!("run returned");
 }
-fn setup_change_test(mut commands: Commands, mut property_registry: ResMut<PropertyRegistry>) {
-    // property_registry.insert_bool("change_test", false);
-
-    commands
-        .spawn()
-        .insert(propent::PropertyName("change_test".into()))
-        .insert(propent::PropertyValue::Bool(false));
-}
-// fn change_test(
-//     property_registry: Res<PropertyRegistry>,
-//     mut query: Query<&mut PropertyTracker, Changed<PropertyTracker>>,
-// ) {
-//     println!("change_test");
-
-//     for mut tracker in query.iter_mut() {
-//         println!("tracker: {:?}", tracker.get_changed(&property_registry))
-//     }
-//     // std::sync::thre
-// }
-
 fn setup(mut commands: Commands) {
     let bm = map::read_map("projects/crystal_planes/assets/maps/hidden_ramp.txt")
         .expect("could not read file");
@@ -99,12 +74,6 @@ fn setup(mut commands: Commands) {
         commands.spawn().insert(rad::PlaneIndex { buf_index: i });
     }
 }
-
-// fn setup_properties_system(mut property_registry: ResMut<PropertyRegistry>) {
-//     property_registry.insert_bool("rotator_system.enabled", false);
-//     property_registry.insert_bool("demo_system.cycle", false);
-//     property_registry.insert_bool("demo_system.light_enabled", true);
-// }
 
 /// this component indicates what entities should rotate
 struct Rotator;
@@ -287,7 +256,6 @@ fn setup_demo_system(mut commands: Commands) {
 fn demo_system(
     mut state: ResMut<DemoSystemState>,
     time: Res<Time>,
-    property_registry: Res<PropertyRegistry>,
     propent_registry: Res<PropentRegistry>,
     rad_update_channel: Res<Mutex<Sender<rad::com::RenderToRad>>>,
     propent_query: Query<(&PropertyName, &PropertyValue)>,
@@ -343,7 +311,6 @@ fn rad_to_render_update(
     rad_to_render: Res<Mutex<Receiver<rad::com::RadToRender>>>,
     mut diagnostics: ResMut<Diagnostics>,
     mut render_status: ResMut<crate::hud::RenderStatus>,
-    mut property_registry: ResMut<PropertyRegistry>,
     mut fb_state: ResMut<quad_render::RadFrontbufState>,
     mut property_update_sender: EventWriter<PropertyUpdateEvent>,
 ) {

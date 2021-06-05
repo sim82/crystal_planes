@@ -3,10 +3,7 @@ use bevy::{
     prelude::*,
 };
 
-use crate::{
-    propent::{PropertyAccess, PropertyName},
-    property::PropertyTracker,
-};
+use crate::propent::{PropertyAccess, PropertyName};
 pub const RAD_INT_PER_SECOND: DiagnosticId =
     DiagnosticId::from_u128(337040787172757619024841343456040760896);
 
@@ -14,7 +11,6 @@ mod button;
 
 // FIXME: only defined here because hud code directly modifies it. Implementation should be moved from main.rs
 pub struct DemoSystemState {
-    pub light_enabled_tracker: PropertyTracker,
     pub cycle_timer: Timer,
 }
 
@@ -22,7 +18,6 @@ impl Default for DemoSystemState {
     fn default() -> Self {
         DemoSystemState {
             cycle_timer: Timer::from_seconds(1f32, true),
-            light_enabled_tracker: PropertyTracker::new(),
         }
     }
 }
@@ -100,7 +95,6 @@ fn update_hud_system(
 #[derive(Clone)]
 enum HudElement {
     TextWithSource(HudSrc),
-    ToggleButton(String, String, String),
     ToggleButtonPropent(String, String, String),
 }
 
@@ -132,40 +126,6 @@ fn build_children(
                         ..Default::default()
                     })
                     .insert(hud_src.clone());
-            }
-            HudElement::ToggleButton(property_name, on_text, off_text) => {
-                parent
-                    .spawn_bundle(ButtonBundle {
-                        style: Style {
-                            size: Size::new(Val::Px(120.0), Val::Px(40.0)),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            align_self: AlignSelf::FlexStart,
-                            ..Default::default()
-                        },
-                        material: button_materials.normal.clone(),
-                        ..Default::default()
-                    })
-                    .insert(button::ToggleButton {
-                        property_name: property_name.clone(),
-                        on_text: on_text.clone(),
-                        off_text: off_text.clone(),
-                    })
-                    .with_children(|parent| {
-                        parent.spawn_bundle(TextBundle {
-                            text: Text::with_section(
-                                off_text.clone(),
-                                TextStyle {
-                                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-
-                                    font_size: 20.0,
-                                    color: Color::rgb(0.8, 0.8, 0.8),
-                                },
-                                TextAlignment::default(),
-                            ),
-                            ..Default::default()
-                        });
-                    });
             }
             HudElement::ToggleButtonPropent(property_name, on_text, off_text) => {
                 parent
