@@ -12,7 +12,7 @@ use bevy::{
 use crystal_planes::{
     hud::{self, DemoSystemState},
     map,
-    propent::{self, PropentRegistry, PropertyName},
+    propent::{self, PropentRegistry, PropertyName, PropertyUpdateEvent},
     property::{self, PropertyRegistry, PropertyTracker, PropertyValue},
     quad_render, rad, util,
 };
@@ -48,19 +48,19 @@ fn main() {
         })
         .add_system(rad_to_render_update.system())
         .add_startup_system(setup_diagnostic_system.system())
-        .add_startup_system(setup_properties_system.system())
+        // .add_startup_system(setup_properties_system.system())
         .add_startup_system(setup_change_test.system())
         // .add_system(change_test.system())
         .run();
     println!("run returned");
 }
 fn setup_change_test(mut commands: Commands, mut property_registry: ResMut<PropertyRegistry>) {
-    property_registry.insert_bool("change_test", false);
+    // property_registry.insert_bool("change_test", false);
 
-    // commands
-    //     .spawn()
-    //     .insert(propent::PropertyName("change_test".into()))
-    //     .insert(propent::PropertyValue::Bool(false));
+    commands
+        .spawn()
+        .insert(propent::PropertyName("change_test".into()))
+        .insert(propent::PropertyValue::Bool(false));
 }
 // fn change_test(
 //     property_registry: Res<PropertyRegistry>,
@@ -100,11 +100,11 @@ fn setup(mut commands: Commands) {
     }
 }
 
-fn setup_properties_system(mut property_registry: ResMut<PropertyRegistry>) {
-    property_registry.insert_bool("rotator_system.enabled", false);
-    property_registry.insert_bool("demo_system.cycle", false);
-    property_registry.insert_bool("demo_system.light_enabled", true);
-}
+// fn setup_properties_system(mut property_registry: ResMut<PropertyRegistry>) {
+//     property_registry.insert_bool("rotator_system.enabled", false);
+//     property_registry.insert_bool("demo_system.cycle", false);
+//     property_registry.insert_bool("demo_system.light_enabled", true);
+// }
 
 /// this component indicates what entities should rotate
 struct Rotator;
@@ -119,19 +119,13 @@ fn rotator_system(
     mut query: Query<(&Rotator, &mut Transform)>,
     propent_query: Query<(&PropertyName, &PropertyValue)>,
 ) {
-    if let Some(ent) = propent_registry.get("change_test") {
+    if let Some(ent) = propent_registry.get("rotator_system.enabled") {
         if let Ok((_, PropertyValue::Bool(true))) = propent_query.get(ent) {
             for (_rotator, mut transform) in query.iter_mut() {
                 transform.rotate(Quat::from_rotation_y(0.5 * time.delta_seconds()));
             }
         }
     }
-
-    // if let Some(true) = property_registry.get_bool("rotator_system.enabled") {
-    //     for (_rotator, mut transform) in query.iter_mut() {
-    //         transform.rotate(Quat::from_rotation_y(0.5 * time.delta_seconds()));
-    //     }
-    // }
 }
 
 // stupid name for a system...
@@ -276,43 +270,63 @@ fn light_update_system(
 fn rand_color(min: f32, max: f32) -> Vec3 {
     util::hsv_to_rgb(thread_rng().gen_range(min, max), 1f32, 1f32)
 }
-fn setup_demo_system(
-    mut state: ResMut<DemoSystemState>,
-    mut property_registry: ResMut<PropertyRegistry>,
-) {
-    state
-        .light_enabled_tracker
-        .subscribe(&mut property_registry, "demo_system.light_enabled");
+fn setup_demo_system(mut commands: Commands) {
+    commands
+        .spawn()
+        .insert(propent::PropertyName("demo_system.light_enabled".into()))
+        .insert(propent::PropertyValue::Bool(true));
+    commands
+        .spawn()
+        .insert(propent::PropertyName("rotator_system.enabled".into()))
+        .insert(propent::PropertyValue::Bool(true));
+    commands
+        .spawn()
+        .insert(propent::PropertyName("demo_system.cycle".into()))
+        .insert(propent::PropertyValue::Bool(false));
 }
 fn demo_system(
     mut state: ResMut<DemoSystemState>,
     time: Res<Time>,
     property_registry: Res<PropertyRegistry>,
+    propent_registry: Res<PropentRegistry>,
     rad_update_channel: Res<Mutex<Sender<rad::com::RenderToRad>>>,
+    propent_query: Query<(&PropertyName, &PropertyValue)>,
+    propent_query_changed: Query<(&PropertyName, &PropertyValue), Changed<PropertyValue>>,
 ) {
     state.cycle_timer.tick(time.delta());
 
     if state.cycle_timer.just_finished() {
-        if let Some(true) = property_registry.get_bool("demo_system.cycle") {
+        if let Some(ent) = propent_registry.get("demo_system.cycle") {
+            if let Ok((_, PropertyValue::Bool(true))) = propent_query.get(ent) {
+                rad_update_channel
+                    .lock()
+                    .unwrap()
+                    .send(rad::com::RenderToRad::SetStripeColors(
+                        rand_color(0f32, 180f32),
+                        rand_color(180f32, 360f32),
+                    ))
+                    .unwrap();
+            }
+        }
+    }
+    if let Some(ent) = propent_registry.get("demo_system.light_enabled") {
+        if let Ok((_, PropertyValue::Bool(v))) = propent_query_changed.get(ent) {
             rad_update_channel
                 .lock()
                 .unwrap()
-                .send(rad::com::RenderToRad::SetStripeColors(
-                    rand_color(0f32, 180f32),
-                    rand_color(180f32, 360f32),
-                ))
+                .send(rad::com::RenderToRad::EnablePointlights(*v))
                 .unwrap();
         }
     }
-    if let Some(PropertyValue::Bool(v)) =
-        state.light_enabled_tracker.get_changed(&property_registry)
-    {
-        rad_update_channel
-            .lock()
-            .unwrap()
-            .send(rad::com::RenderToRad::EnablePointlights(*v))
-            .unwrap();
-    }
+    // if let Some(PropertyValue::Bool(v)) =
+    //     state.light_enabled_tracker.get_changed(&property_registry)
+    // {
+    //     rad_update_channel
+    //         .lock()
+    //         .unwrap()
+    //         .send(rad::com::RenderToRad::EnablePointlights(*v))
+    //         .unwrap();
+    // }
 }
 
 fn setup_diagnostic_system(mut diagnostics: ResMut<Diagnostics>) {
@@ -331,6 +345,7 @@ fn rad_to_render_update(
     mut render_status: ResMut<crate::hud::RenderStatus>,
     mut property_registry: ResMut<PropertyRegistry>,
     mut fb_state: ResMut<quad_render::RadFrontbufState>,
+    mut property_update_sender: EventWriter<PropertyUpdateEvent>,
 ) {
     for cmd in rad_to_render.lock().unwrap().try_iter() {
         match cmd {
@@ -346,7 +361,10 @@ fn rad_to_render_update(
             }
             rad::com::RadToRender::RadReady => {
                 render_status.text = "ready".into();
-                property_registry.insert_bool("rotator_system.enabled", true);
+                property_update_sender.send(PropertyUpdateEvent::new(
+                    "rotator_system.enabled".to_string(),
+                    PropertyValue::Bool(true),
+                ))
             }
         }
     }

@@ -225,25 +225,20 @@ fn setup_hud_system2(
             true,
         )),
         HudElement::TextWithSource(HudSrc::RenderStatus),
-        HudElement::ToggleButton(
+        HudElement::ToggleButtonPropent(
             "rotator_system.enabled".to_string(),
             "Stop".to_string(),
             "Start".to_string(),
         ),
-        HudElement::ToggleButton(
+        HudElement::ToggleButtonPropent(
             "demo_system.light_enabled".to_string(),
             "disable light".to_string(),
             "enable light".to_string(),
         ),
-        HudElement::ToggleButton(
+        HudElement::ToggleButtonPropent(
             "demo_system.cycle".to_string(),
             "disable cycle".to_string(),
             "enable cycle".to_string(),
-        ),
-        HudElement::ToggleButtonPropent(
-            "change_test".to_string(),
-            "on".to_string(),
-            "off".to_string(),
         ),
     ];
 

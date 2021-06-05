@@ -76,13 +76,28 @@ fn create_pending(mut commands: Commands, mut propent_registry: ResMut<PropentRe
 }
 fn detect_change(
     mut propent_registry: ResMut<PropentRegistry>,
-    query: Query<(Entity, &PropertyName, &PropertyValue), Changed<PropertyName>>,
+    query: Query<&PropertyValue>,
+    query_changed: Query<(Entity, &PropertyName, &PropertyValue), Changed<PropertyName>>,
+    mut query_access: Query<(Entity, &PropertyName, &mut PropertyAccess), Changed<PropertyName>>,
 ) {
-    for (ent, name, value) in query.iter() {
+    for (ent, name, value) in query_changed.iter() {
         println!("new: {:?} {:?} {:?}", ent, name, value);
         propent_registry
             .name_cache
             .insert(name.0.clone(), Some(ent));
+    }
+
+    for (ent, name, mut access) in query_access.iter_mut() {
+        println!("new access. initial propagate: {:?} {:?}", ent, name);
+        let value = query
+            .get(
+                propent_registry
+                    .get(&name.0)
+                    .expect("failed to get ent for property"),
+            )
+            .expect("missing property value for access");
+
+        access.cache = value.clone();
     }
 }
 
