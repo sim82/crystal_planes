@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::property::PropertyRegistry;
+use crate::{
+    propent::{self, PropertyAccess, PropertyName, PropertyUpdateEvent},
+    property::{PropertyRegistry, PropertyValue},
+};
 
 /// This example illustrates how to create a button that changes color and text based on its interaction state.
 
@@ -8,7 +11,8 @@ pub struct ButtonPlugin;
 impl Plugin for ButtonPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.init_resource::<ButtonMaterials>()
-            .add_system(toggle_button_system.system());
+            .add_system(toggle_button_system.system())
+            .add_system(propent_toggle_button_system.system());
         // .add_system(toggle_button_text_system.exclusive_system());
     }
 }
@@ -46,7 +50,7 @@ fn toggle_button_system(
             &Children,
             &ToggleButton,
         ),
-        Changed<Interaction>, // FIXME: this is crap
+        (Changed<Interaction>, Without<PropertyAccess>),
     >,
     mut text_query: Query<&mut Text>,
 ) {
@@ -84,5 +88,66 @@ fn toggle_button_system(
                 *material = button_materials.normal.clone();
             }
         }
+    }
+}
+
+fn propent_toggle_button_system(
+    button_materials: Res<ButtonMaterials>,
+    mut property_update_events: EventWriter<propent::PropertyUpdateEvent>,
+    query: Query<(&PropertyAccess, &ToggleButton, &Children), Changed<PropertyAccess>>,
+    mut interaction_query: Query<
+        (
+            &Interaction,
+            &mut Handle<ColorMaterial>,
+            &Children,
+            &ToggleButton,
+            &PropertyName,
+            &PropertyAccess,
+        ),
+        (Changed<Interaction>,),
+    >,
+    mut text_query: Query<&mut Text>,
+) {
+    for (interaction, mut material, children, toggle_button, property_name, property_access) in
+        interaction_query.iter_mut()
+    {
+        let mut text = text_query.get_mut(children[0]).unwrap();
+        match *interaction {
+            Interaction::Clicked => {
+                let v = if let PropertyValue::Bool(v) = property_access.cache {
+                    v
+                } else {
+                    false
+                };
+                let new_value = PropertyValue::Bool(!v);
+                println!("send update: {} {:?}", property_name.0, new_value);
+                property_update_events
+                    .send(PropertyUpdateEvent::new(property_name.0.clone(), new_value));
+                *material = button_materials.pressed.clone();
+            }
+            Interaction::Hovered => {
+                *material = button_materials.hovered.clone();
+            }
+            Interaction::None => {
+                *material = button_materials.normal.clone();
+            }
+        }
+    }
+
+    for (access, toggle_button, children) in query.iter() {
+        println!("change detected: {:?}", access.cache);
+        let mut text = text_query.get_mut(children[0]).unwrap();
+
+        let is_on = if let PropertyValue::Bool(v) = access.cache {
+            v
+        } else {
+            false
+        };
+        text.sections[0].value = if is_on {
+            &toggle_button.on_text
+        } else {
+            &toggle_button.off_text
+        }
+        .clone();
     }
 }

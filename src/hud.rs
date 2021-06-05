@@ -3,7 +3,10 @@ use bevy::{
     prelude::*,
 };
 
-use crate::property::PropertyTracker;
+use crate::{
+    propent::{PropertyAccess, PropertyName},
+    property::PropertyTracker,
+};
 pub const RAD_INT_PER_SECOND: DiagnosticId =
     DiagnosticId::from_u128(337040787172757619024841343456040760896);
 
@@ -98,6 +101,7 @@ fn update_hud_system(
 enum HudElement {
     TextWithSource(HudSrc),
     ToggleButton(String, String, String),
+    ToggleButtonPropent(String, String, String),
 }
 
 fn build_children(
@@ -163,6 +167,42 @@ fn build_children(
                         });
                     });
             }
+            HudElement::ToggleButtonPropent(property_name, on_text, off_text) => {
+                parent
+                    .spawn_bundle(ButtonBundle {
+                        style: Style {
+                            size: Size::new(Val::Px(120.0), Val::Px(40.0)),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            align_self: AlignSelf::FlexStart,
+                            ..Default::default()
+                        },
+                        material: button_materials.normal.clone(),
+                        ..Default::default()
+                    })
+                    .insert(PropertyName(property_name.clone()))
+                    .insert(PropertyAccess::default())
+                    .insert(button::ToggleButton {
+                        property_name: property_name.clone(),
+                        on_text: on_text.clone(),
+                        off_text: off_text.clone(),
+                    })
+                    .with_children(|parent| {
+                        parent.spawn_bundle(TextBundle {
+                            text: Text::with_section(
+                                off_text.clone(),
+                                TextStyle {
+                                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+
+                                    font_size: 20.0,
+                                    color: Color::rgb(0.8, 0.8, 0.8),
+                                },
+                                TextAlignment::default(),
+                            ),
+                            ..Default::default()
+                        });
+                    });
+            }
         }
     }
 }
@@ -199,6 +239,11 @@ fn setup_hud_system2(
             "demo_system.cycle".to_string(),
             "disable cycle".to_string(),
             "enable cycle".to_string(),
+        ),
+        HudElement::ToggleButtonPropent(
+            "change_test".to_string(),
+            "on".to_string(),
+            "off".to_string(),
         ),
     ];
 

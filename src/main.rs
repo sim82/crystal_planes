@@ -12,7 +12,8 @@ use bevy::{
 use crystal_planes::{
     hud::{self, DemoSystemState},
     map,
-    property::{self, PropertyRegistry, PropertyValue},
+    propent::{self, PropentRegistry, PropertyName},
+    property::{self, PropertyRegistry, PropertyTracker, PropertyValue},
     quad_render, rad, util,
 };
 
@@ -30,6 +31,7 @@ fn main() {
         // .add_plugin(PrintDiagnosticsPlugin::default())
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
         .add_plugin(property::PropertyPlugin)
+        .add_plugin(propent::PropentPlugin)
         .add_startup_stage("planes", planes_stage)
         .add_startup_stage_after("planes", "renderer", SystemStage::single_threaded())
         .add_plugin(quad_render::QuadRenderPlugin::default())
@@ -47,9 +49,30 @@ fn main() {
         .add_system(rad_to_render_update.system())
         .add_startup_system(setup_diagnostic_system.system())
         .add_startup_system(setup_properties_system.system())
+        .add_startup_system(setup_change_test.system())
+        // .add_system(change_test.system())
         .run();
     println!("run returned");
 }
+fn setup_change_test(mut commands: Commands, mut property_registry: ResMut<PropertyRegistry>) {
+    property_registry.insert_bool("change_test", false);
+
+    // commands
+    //     .spawn()
+    //     .insert(propent::PropertyName("change_test".into()))
+    //     .insert(propent::PropertyValue::Bool(false));
+}
+// fn change_test(
+//     property_registry: Res<PropertyRegistry>,
+//     mut query: Query<&mut PropertyTracker, Changed<PropertyTracker>>,
+// ) {
+//     println!("change_test");
+
+//     for mut tracker in query.iter_mut() {
+//         println!("tracker: {:?}", tracker.get_changed(&property_registry))
+//     }
+//     // std::sync::thre
+// }
 
 fn setup(mut commands: Commands) {
     let bm = map::read_map("projects/crystal_planes/assets/maps/hidden_ramp.txt")
@@ -91,14 +114,24 @@ use quad_render::RotatorSystemState;
 /// rotates the parent, which will result in the child also rotating
 fn rotator_system(
     time: Res<Time>,
-    property_registry: Res<PropertyRegistry>,
+    // property_registry: Res<PropertyRegistry>,
+    propent_registry: Res<PropentRegistry>,
     mut query: Query<(&Rotator, &mut Transform)>,
+    propent_query: Query<(&PropertyName, &PropertyValue)>,
 ) {
-    if let Some(true) = property_registry.get_bool("rotator_system.enabled") {
-        for (_rotator, mut transform) in query.iter_mut() {
-            transform.rotate(Quat::from_rotation_y(0.5 * time.delta_seconds()));
+    if let Some(ent) = propent_registry.get("change_test") {
+        if let Ok((_, PropertyValue::Bool(true))) = propent_query.get(ent) {
+            for (_rotator, mut transform) in query.iter_mut() {
+                transform.rotate(Quat::from_rotation_y(0.5 * time.delta_seconds()));
+            }
         }
     }
+
+    // if let Some(true) = property_registry.get_bool("rotator_system.enabled") {
+    //     for (_rotator, mut transform) in query.iter_mut() {
+    //         transform.rotate(Quat::from_rotation_y(0.5 * time.delta_seconds()));
+    //     }
+    // }
 }
 
 // stupid name for a system...

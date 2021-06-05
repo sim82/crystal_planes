@@ -97,6 +97,11 @@ impl PropertyTracker {
             update_signal: None,
         }
     }
+    pub fn new_subscribed(property_registry: &mut PropertyRegistry, name: &str) -> Self {
+        let mut t = Self::new();
+        t.subscribe(property_registry, name);
+        t
+    }
     pub fn subscribe(&mut self, property_registry: &mut PropertyRegistry, name: &str) {
         if self.update_signal.is_some() {
             return;
@@ -123,6 +128,27 @@ impl PropertyTracker {
 impl Default for PropertyTracker {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl DetectChanges for PropertyTracker {
+    fn is_added(&self) -> bool {
+        false
+    }
+
+    fn is_changed(&self) -> bool {
+        println!("is_changed");
+        if let Some(update_signal) = &self.update_signal {
+            update_signal.load(std::sync::atomic::Ordering::Relaxed)
+        } else {
+            false
+        }
+    }
+
+    fn set_changed(&mut self) {
+        if let Some(update_signal) = &mut self.update_signal {
+            update_signal.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
     }
 }
 
