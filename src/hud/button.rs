@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::propent::{self, PropertyAccess, PropertyName, PropertyUpdateEvent, PropertyValue};
+use crate::property::{self, PropertyAccess, PropertyName, PropertyUpdateEvent, PropertyValue};
 
 /// This example illustrates how to create a button that changes color and text based on its interaction state.
 
@@ -38,7 +38,7 @@ pub struct ToggleButton {
 
 fn propent_toggle_button_system(
     button_materials: Res<ButtonMaterials>,
-    mut property_update_events: EventWriter<propent::PropertyUpdateEvent>,
+    mut property_update_events: EventWriter<property::PropertyUpdateEvent>,
     query: Query<(&PropertyAccess, &ToggleButton, &Children), Changed<PropertyAccess>>,
     mut interaction_query: Query<
         (

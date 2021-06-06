@@ -12,7 +12,7 @@ use bevy::{
 use crystal_planes::{
     hud::{self, DemoSystemState},
     map,
-    propent::{self, PropentRegistry, PropertyName, PropertyUpdateEvent, PropertyValue},
+    property::{self, PropertyEntityRegistry, PropertyName, PropertyUpdateEvent, PropertyValue},
     quad_render, rad, util,
 };
 
@@ -29,7 +29,7 @@ fn main() {
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         // .add_plugin(PrintDiagnosticsPlugin::default())
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
-        .add_plugin(propent::PropentPlugin)
+        .add_plugin(property::PropertyPlugin)
         .add_startup_stage("planes", planes_stage)
         .add_startup_stage_after("planes", "renderer", SystemStage::single_threaded())
         .add_plugin(quad_render::QuadRenderPlugin::default())
@@ -84,15 +84,12 @@ use quad_render::RotatorSystemState;
 fn rotator_system(
     time: Res<Time>,
     // property_registry: Res<PropertyRegistry>,
-    propent_registry: Res<PropentRegistry>,
+    propent_registry: Res<PropertyEntityRegistry>,
     mut query: Query<(&Rotator, &mut Transform)>,
-    propent_query: Query<(&PropertyName, &PropertyValue)>,
 ) {
-    if let Some(ent) = propent_registry.get("rotator_system.enabled") {
-        if let Ok((_, PropertyValue::Bool(true))) = propent_query.get(ent) {
-            for (_rotator, mut transform) in query.iter_mut() {
-                transform.rotate(Quat::from_rotation_y(0.5 * time.delta_seconds()));
-            }
+    if let Some(true) = propent_registry.get_value_bool("rotator_system.enabled") {
+        for (_rotator, mut transform) in query.iter_mut() {
+            transform.rotate(Quat::from_rotation_y(0.5 * time.delta_seconds()));
         }
     }
 }
@@ -242,39 +239,28 @@ fn rand_color(min: f32, max: f32) -> Vec3 {
 fn setup_demo_system(mut commands: Commands) {
     commands
         .spawn()
-        .insert(propent::PropertyName("demo_system.light_enabled".into()))
-        .insert(propent::PropertyValue::Bool(true));
-    commands
-        .spawn()
-        .insert(propent::PropertyName("rotator_system.enabled".into()))
-        .insert(propent::PropertyValue::Bool(true));
-    commands
-        .spawn()
-        .insert(propent::PropertyName("demo_system.cycle".into()))
-        .insert(propent::PropertyValue::Bool(false));
+        .insert(property::PropertyName("demo_system.light_enabled".into()))
+        .insert(property::PropertyValue::Bool(true));
 }
 fn demo_system(
     mut state: ResMut<DemoSystemState>,
     time: Res<Time>,
-    propent_registry: Res<PropentRegistry>,
+    propent_registry: Res<PropertyEntityRegistry>,
     rad_update_channel: Res<Mutex<Sender<rad::com::RenderToRad>>>,
-    propent_query: Query<(&PropertyName, &PropertyValue)>,
     propent_query_changed: Query<(&PropertyName, &PropertyValue), Changed<PropertyValue>>,
 ) {
     state.cycle_timer.tick(time.delta());
 
     if state.cycle_timer.just_finished() {
-        if let Some(ent) = propent_registry.get("demo_system.cycle") {
-            if let Ok((_, PropertyValue::Bool(true))) = propent_query.get(ent) {
-                rad_update_channel
-                    .lock()
-                    .unwrap()
-                    .send(rad::com::RenderToRad::SetStripeColors(
-                        rand_color(0f32, 180f32),
-                        rand_color(180f32, 360f32),
-                    ))
-                    .unwrap();
-            }
+        if let Some(true) = propent_registry.get_value_bool("demo_system.cycle") {
+            rad_update_channel
+                .lock()
+                .unwrap()
+                .send(rad::com::RenderToRad::SetStripeColors(
+                    rand_color(0f32, 180f32),
+                    rand_color(180f32, 360f32),
+                ))
+                .unwrap();
         }
     }
     if let Some(ent) = propent_registry.get("demo_system.light_enabled") {
@@ -286,15 +272,6 @@ fn demo_system(
                 .unwrap();
         }
     }
-    // if let Some(PropertyValue::Bool(v)) =
-    //     state.light_enabled_tracker.get_changed(&property_registry)
-    // {
-    //     rad_update_channel
-    //         .lock()
-    //         .unwrap()
-    //         .send(rad::com::RenderToRad::EnablePointlights(*v))
-    //         .unwrap();
-    // }
 }
 
 fn setup_diagnostic_system(mut diagnostics: ResMut<Diagnostics>) {
