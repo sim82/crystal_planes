@@ -7,11 +7,14 @@ use std::sync::{
 use bevy::diagnostic::{Diagnostic, Diagnostics, DiagnosticsPlugin};
 
 use bevy::{
-    diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, render::mesh::shape, winit::WinitConfig,
+    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
+    prelude::*,
+    render::mesh::shape,
+    winit::WinitConfig,
 };
 use crystal_planes::{
     hud::{self, DemoSystemState},
-    map,
+    log_property_plugin, map,
     property::{self, PropertyEntityRegistry, PropertyName, PropertyUpdateEvent, PropertyValue},
     quad_render, rad, util,
 };
@@ -27,9 +30,10 @@ fn main() {
     App::build()
         .add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        // .add_plugin(PrintDiagnosticsPlugin::default())
+        // .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
         .add_plugin(property::PropertyPlugin)
+        // .add_plugin(log_property_plugin::LogPropertyPlugin::default())
         .add_startup_stage("planes", planes_stage)
         .add_startup_stage_after("planes", "renderer", SystemStage::single_threaded())
         .add_plugin(quad_render::QuadRenderPlugin::default())
