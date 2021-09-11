@@ -24,7 +24,7 @@ fn main() {
         .with_system(setup.system())
         .with_system(setup_bevy.system());
 
-    App::build()
+    App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         // .add_plugin(PrintDiagnosticsPlugin::default())
@@ -50,8 +50,7 @@ fn main() {
     println!("run returned");
 }
 fn setup(mut commands: Commands) {
-    let bm = map::read_map("projects/crystal_planes/assets/maps/hidden_ramp.txt")
-        .expect("could not read file");
+    let bm = map::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
     let bm = Box::new(map::DenseBlockmap::from_bitmap(&*bm));
     let mut planes = map::PlanesSep::new();
     planes.create_planes(&*bm);

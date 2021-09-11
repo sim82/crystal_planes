@@ -135,7 +135,7 @@ fn vis_update_system(
 pub struct OctreeRenderPlugin;
 
 impl Plugin for OctreeRenderPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.init_resource::<octree::Octants>()
             .init_resource::<OctreeVisInfo>()
             .add_startup_system_to_stage("renderer", setup.system())

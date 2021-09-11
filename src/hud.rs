@@ -224,7 +224,7 @@ fn setup_hud_system2(
 pub struct HudPlugin;
 
 impl Plugin for HudPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.init_resource::<RenderStatus>()
             .add_startup_system(setup_hud_system2.system())
             .add_system(update_hud_system.system())

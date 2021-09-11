@@ -134,7 +134,7 @@ fn update_event_listener(
 pub struct PropentPlugin;
 
 impl Plugin for PropentPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         println!("propent plugin");
         app.init_resource::<PropentRegistry>()
             .add_system(create_pending.system())

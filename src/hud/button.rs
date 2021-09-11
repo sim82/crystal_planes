@@ -6,7 +6,7 @@ use crate::propent::{self, PropertyAccess, PropertyName, PropertyUpdateEvent, Pr
 
 pub struct ButtonPlugin;
 impl Plugin for ButtonPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.init_resource::<ButtonMaterials>()
             .add_system(propent_toggle_button_system.system());
         // .add_system(toggle_button_text_system.exclusive_system());
