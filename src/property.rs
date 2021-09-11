@@ -170,7 +170,7 @@ fn detect_change(
 pub struct PropertyPlugin;
 
 impl Plugin for PropertyPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         println!("propent plugin");
         app.init_resource::<PropertyEntityRegistry>()
             .add_system(

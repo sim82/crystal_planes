@@ -21,7 +21,7 @@ struct LogPropertyState {
 }
 
 impl Plugin for LogPropertyPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.insert_resource(LogPropertyState {
             timer: Timer::new(self.wait_duration, true),
         });

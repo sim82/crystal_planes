@@ -348,7 +348,7 @@ fn quad_mesh() -> Mesh {
 pub struct QuadRenderPlugin;
 
 impl Plugin for QuadRenderPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.add_startup_system_to_stage("renderer", setup.system())
             // .add_system(blink_system.system())
             .add_system(apply_frontbuf.system())

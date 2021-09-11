@@ -27,7 +27,7 @@ fn main() {
         .with_system(setup.system())
         .with_system(setup_bevy.system());
 
-    App::build()
+    App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         // .add_plugin(LogDiagnosticsPlugin::default())
