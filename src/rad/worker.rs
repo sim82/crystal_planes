@@ -105,6 +105,7 @@ impl CommonData {
                 }
                 RenderToRad::EnablePointlights(v) => {
                     self.lights_enabled = v;
+                    light_updates.extend(self.point_lights.keys());
                     // println!("lights enabled: {}", self.lights_enabled)
                 }
             }
