@@ -6,19 +6,24 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-bevy = {git="https://github.com/bevyengine/bevy.git", branch="main"}
-arrayvec = "^0.5"
+bevy = { git = "https://github.com/bevyengine/bevy.git", branch = "main", features = [
+    "dynamic",
+] }
+arrayvec = "^0.7"
 #bevy = "^0.5"
 #bevy={path="../bevy"}
 
-bevy_fly_camera={git="https://github.com/sim82/bevy_fly_camera.git", branch="master"}
+bevy_fly_camera = { git = "https://github.com/sim82/bevy_fly_camera.git", branch = "master" }
 # bevy_fly_camera={path="../bevy_fly_camera"}
+
+#bevy_egui = {version = "^0.5"}
+bevy_egui = { git = "https://github.com/jakobhellermann/bevy_egui.git", branch = "bevy-main" }
 
 bincode = "*"
 image = "*"
-ndarray="*"
-rand = {version = "^0.7", features = ["small_rng"]}
-rayon="^1"
+ndarray = "*"
+rand = { version = "^0.8", features = ["small_rng"] }
+rayon = "^1"
 rodio = "*"
 serde = { version = "1", features = ["derive"] }
 packed_simd = { version = "0.3.5", package = "packed_simd_2" }

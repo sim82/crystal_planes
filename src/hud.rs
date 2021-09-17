@@ -93,7 +93,7 @@ fn update_hud_system(
 }
 
 #[derive(Clone)]
-enum HudElement {
+pub enum HudElement {
     TextWithSource(HudSrc),
     ToggleButtonPropent(String, String, String),
 }

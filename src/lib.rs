@@ -1,4 +1,5 @@
 pub mod hud;
+pub mod hud_egui;
 pub mod map;
 pub mod math;
 pub mod octree;

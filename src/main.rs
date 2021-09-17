@@ -9,9 +9,10 @@ use bevy::diagnostic::{Diagnostic, Diagnostics, DiagnosticsPlugin};
 use bevy::{
     diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, render::mesh::shape, winit::WinitConfig,
 };
+use bevy_egui::EguiPlugin;
 use crystal_planes::{
     hud::{self, DemoSystemState},
-    map,
+    hud_egui, map,
     propent::{self, PropentRegistry, PropertyName, PropertyUpdateEvent, PropertyValue},
     quad_render, rad, util,
 };
@@ -46,9 +47,12 @@ fn main() {
         })
         .add_system(rad_to_render_update.system())
         .add_startup_system(setup_diagnostic_system.system())
+        .add_plugin(EguiPlugin)
+        .add_system(hud_egui::hud_egui_system.system())
         .run();
     println!("run returned");
 }
+
 fn setup(mut commands: Commands) {
     let bm = map::read_map("assets/maps/hidden_ramp.txt").expect("could not read file");
     let bm = Box::new(map::DenseBlockmap::from_bitmap(&*bm));
@@ -236,7 +240,7 @@ fn light_update_system(
 }
 
 fn rand_color(min: f32, max: f32) -> Vec3 {
-    util::hsv_to_rgb(thread_rng().gen_range(min, max), 1f32, 1f32)
+    util::hsv_to_rgb(thread_rng().gen_range(min..max), 1f32, 1f32)
 }
 fn setup_demo_system(mut commands: Commands) {
     commands

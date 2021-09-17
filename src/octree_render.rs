@@ -72,7 +72,7 @@ fn vis_update_system(
                     .clone();
 
                 let color =
-                    crate::util::hsv_to_rgb(thread_rng().gen_range(0f32, 360f32), 1f32, 1f32);
+                    crate::util::hsv_to_rgb(thread_rng().gen_range(0f32..360f32), 1f32, 1f32);
                 let cube_material_handle = materials.add(StandardMaterial {
                     base_color: Color::rgba(color.x, color.y, color.z, 1.0),
                     ..Default::default()
