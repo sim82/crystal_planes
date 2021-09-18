@@ -92,31 +92,48 @@ pub fn hud_egui_system(
                     };
                     ui.label(text);
                 }
-                HudElement::ToggleButtonPropent(property_name, on_text, off_text) => {
-                    ui.button(property_name);
+                HudElement::ToggleButtonPropent(property_name, _on_text, _off_text) => {
+                    match propent_registry.get(&property_name) {
+                        Some(rs) => {
+                            let v = propent_query.get(rs).unwrap();
+                            let v = match v {
+                                PropertyValue::Bool(v) => *v,
+                                _ => false,
+                            };
+                            if ui.button(format!("{}:{:?}", property_name, v)).clicked() {
+                                property_update_events.send(PropertyUpdateEvent::new(
+                                    property_name,
+                                    PropertyValue::Bool(!v),
+                                ));
+                            }
+                        }
+                        _ => {
+                            ui.label(format!("failed: {}", property_name));
+                        }
+                    }
                 }
             }
         }
     });
 
-    egui::Window::new("Hello").show(egui_context.ctx(), |ui| {
-        ui.label("world");
-        match propent_registry.get("rotator_system.enabled") {
-            Some(rs) => {
-                let v = propent_query.get(rs).unwrap();
-                let v = match v {
-                    PropertyValue::Bool(v) => *v,
-                    _ => false,
-                };
-                if ui.button(format!("rotate: {:?}", v)).clicked() {
-                    info!("quit");
-                    property_update_events.send(PropertyUpdateEvent::new(
-                        "rotator_system.enabled".to_string(),
-                        PropertyValue::Bool(!v),
-                    ));
-                }
-            }
-            _ => (),
-        }
-    });
+    // egui::Window::new("Hello").show(egui_context.ctx(), |ui| {
+    //     ui.label("world");
+    //     match propent_registry.get("rotator_system.enabled") {
+    //         Some(rs) => {
+    //             let v = propent_query.get(rs).unwrap();
+    //             let v = match v {
+    //                 PropertyValue::Bool(v) => *v,
+    //                 _ => false,
+    //             };
+    //             if ui.button(format!("rotate: {:?}", v)).clicked() {
+    //                 info!("quit");
+    //                 property_update_events.send(PropertyUpdateEvent::new(
+    //                     "rotator_system.enabled".to_string(),
+    //                     PropertyValue::Bool(!v),
+    //                 ));
+    //             }
+    //         }
+    //         _ => (),
+    //     }
+    // });
 }
