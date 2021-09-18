@@ -248,18 +248,30 @@ fn setup_demo_system(mut commands: Commands) {
         .spawn()
         .insert(property::PropertyName("demo_system.light_enabled".into()))
         .insert(property::PropertyValue::Bool(true))
-        .insert(HudElement::ToggleThis);
+        .insert(HudElement::EditThis);
     commands
         .spawn()
         .insert(property::PropertyName("rotator_system.enabled".into()))
         .insert(property::PropertyValue::Bool(true))
-        .insert(HudElement::ToggleThis);
+        .insert(HudElement::EditThis);
     commands
         .spawn()
         .insert(property::PropertyName("demo_system.cycle".into()))
         .insert(property::PropertyValue::Bool(false))
-        .insert(HudElement::ToggleThis);
+        .insert(HudElement::EditThis);
+
+    commands
+        .spawn()
+        .insert(property::PropertyName("demo_system.test_string".into()))
+        .insert(property::PropertyValue::String("Hello Property!".into()))
+        .insert(HudElement::EditThis);
+    commands
+        .spawn()
+        .insert(property::PropertyName("demo_system.test_string2".into()))
+        .insert(property::PropertyValue::String("Hello Property2!".into()))
+        .insert(HudElement::EditThis);
 }
+
 fn demo_system(
     mut state: ResMut<DemoSystemState>,
     time: Res<Time>,

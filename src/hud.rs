@@ -96,7 +96,7 @@ pub enum HudSrc {
 pub enum HudElement {
     TextWithSource(HudSrc),
     ToggleButtonProperty(String, String, String),
-    ToggleThis,
+    EditThis,
 }
 
 // fn build_children(

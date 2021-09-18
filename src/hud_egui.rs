@@ -42,7 +42,12 @@ pub fn hud_egui_setup_system(mut commands: Commands) {
         .insert(HudElement::TextWithSource(HudSrc::RenderStatus));
 }
 
+pub struct StringEdit {
+    current_string: String,
+}
+
 pub fn hud_egui_system(
+    mut commands: Commands,
     egui_context: Res<EguiContext>,
     property_registry: Res<PropertyRegistry>,
     mut property_update_events: EventWriter<PropertyUpdateEvent>,
@@ -50,6 +55,7 @@ pub fn hud_egui_system(
     diagnostics: Res<Diagnostics>,
     render_status: Res<RenderStatus>,
     hud_elements_query: Query<(Entity, &HudElement)>,
+    mut string_edit_query: Query<&mut StringEdit>,
 ) {
     egui::Window::new("HUD").show(egui_context.ctx(), |ui| {
         for (entity, element) in hud_elements_query.iter() {
@@ -101,18 +107,42 @@ pub fn hud_egui_system(
                         }
                     }
                 }
-                HudElement::ToggleThis => match property_query.get(entity) {
+                HudElement::EditThis => match property_query.get(entity) {
                     Ok((property_value, property_name)) => {
-                        let v = match property_value {
-                            PropertyValue::Bool(v) => *v,
-                            _ => false,
+                        match property_value {
+                            PropertyValue::Bool(v) => {
+                                if ui.button(format!("{}:{:?}", property_name.0, v)).clicked() {
+                                    property_update_events.send(PropertyUpdateEvent::new(
+                                        property_name.0.clone(),
+                                        PropertyValue::Bool(!v),
+                                    ));
+                                }
+                            }
+                            PropertyValue::String(s) => match string_edit_query.get_mut(entity) {
+                                Ok(mut string_edit) => {
+                                    if ui
+                                        .text_edit_singleline(&mut string_edit.current_string)
+                                        .lost_focus()
+                                    {
+                                        commands.entity(entity).remove::<StringEdit>();
+                                        property_update_events.send(PropertyUpdateEvent::new(
+                                            property_name.0.clone(),
+                                            PropertyValue::String(
+                                                string_edit.current_string.clone(),
+                                            ),
+                                        ));
+                                    }
+                                }
+                                _ => {
+                                    if ui.button(&property_name.0).clicked() {
+                                        commands.entity(entity).insert(StringEdit {
+                                            current_string: s.to_string(),
+                                        });
+                                    }
+                                }
+                            },
+                            _ => (),
                         };
-                        if ui.button(format!("{}:{:?}", property_name.0, v)).clicked() {
-                            property_update_events.send(PropertyUpdateEvent::new(
-                                property_name.0.clone(),
-                                PropertyValue::Bool(!v),
-                            ));
-                        }
                     }
                     _ => {
                         ui.label(format!("failed: {:?}", entity));
@@ -120,6 +150,8 @@ pub fn hud_egui_system(
                 },
             }
         }
+
+        // ui.add(egui::TextEdit::singleline("text").hint_text("Write something here"));
     });
 }
 
