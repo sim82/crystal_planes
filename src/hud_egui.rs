@@ -6,7 +6,7 @@ use bevy_egui::{egui, EguiContext};
 
 use crate::{
     hud::{HudElement, HudSrc, RenderStatus, RAD_INT_PER_SECOND},
-    propent::{PropentRegistry, PropertyName, PropertyUpdateEvent, PropertyValue},
+    property::{PropertyName, PropertyRegistry, PropertyUpdateEvent, PropertyValue},
 };
 
 fn mag_to_str(mag: i32) -> &'static str {
@@ -44,7 +44,7 @@ pub fn hud_egui_setup_system(mut commands: Commands) {
 
 pub fn hud_egui_system(
     egui_context: Res<EguiContext>,
-    propent_registry: Res<PropentRegistry>,
+    propent_registry: Res<PropertyRegistry>,
     mut property_update_events: EventWriter<PropertyUpdateEvent>,
     propent_query: Query<(&PropertyValue, &PropertyName)>,
     diagnostics: Res<Diagnostics>,

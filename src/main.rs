@@ -14,7 +14,7 @@ use crystal_planes::{
     hud::{self, DemoSystemState, HudElement},
     hud_egui::{self, HudEguiPlugin},
     map,
-    propent::{self, PropentRegistry, PropertyName, PropertyUpdateEvent, PropertyValue},
+    property::{self, PropertyName, PropertyRegistry, PropertyUpdateEvent, PropertyValue},
     quad_render, rad, util,
 };
 
@@ -31,7 +31,7 @@ fn main() {
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         // .add_plugin(PrintDiagnosticsPlugin::default())
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
-        .add_plugin(propent::PropentPlugin)
+        .add_plugin(property::PropertyPlugin)
         .add_startup_stage("planes", planes_stage)
         .add_startup_stage_after("planes", "renderer", SystemStage::single_threaded())
         .add_plugin(quad_render::QuadRenderPlugin::default())
@@ -88,7 +88,7 @@ use quad_render::RotatorSystemState;
 fn rotator_system(
     time: Res<Time>,
     // property_registry: Res<PropertyRegistry>,
-    propent_registry: Res<PropentRegistry>,
+    propent_registry: Res<PropertyRegistry>,
     mut query: Query<(&Rotator, &mut Transform)>,
     propent_query: Query<(&PropertyName, &PropertyValue)>,
 ) {
@@ -246,24 +246,24 @@ fn rand_color(min: f32, max: f32) -> Vec3 {
 fn setup_demo_system(mut commands: Commands) {
     commands
         .spawn()
-        .insert(propent::PropertyName("demo_system.light_enabled".into()))
-        .insert(propent::PropertyValue::Bool(true))
+        .insert(property::PropertyName("demo_system.light_enabled".into()))
+        .insert(property::PropertyValue::Bool(true))
         .insert(HudElement::ToggleThis);
     commands
         .spawn()
-        .insert(propent::PropertyName("rotator_system.enabled".into()))
-        .insert(propent::PropertyValue::Bool(true))
+        .insert(property::PropertyName("rotator_system.enabled".into()))
+        .insert(property::PropertyValue::Bool(true))
         .insert(HudElement::ToggleThis);
     commands
         .spawn()
-        .insert(propent::PropertyName("demo_system.cycle".into()))
-        .insert(propent::PropertyValue::Bool(false))
+        .insert(property::PropertyName("demo_system.cycle".into()))
+        .insert(property::PropertyValue::Bool(false))
         .insert(HudElement::ToggleThis);
 }
 fn demo_system(
     mut state: ResMut<DemoSystemState>,
     time: Res<Time>,
-    propent_registry: Res<PropentRegistry>,
+    propent_registry: Res<PropertyRegistry>,
     rad_update_channel: Res<Mutex<Sender<rad::com::RenderToRad>>>,
     propent_query: Query<(&PropertyName, &PropertyValue)>,
     propent_query_changed: Query<(&PropertyName, &PropertyValue), Changed<PropertyValue>>,

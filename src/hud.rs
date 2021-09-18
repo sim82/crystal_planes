@@ -3,7 +3,7 @@ use bevy::{
     prelude::*,
 };
 
-use crate::propent::{PropertyAccess, PropertyName};
+use crate::property::{PropertyAccess, PropertyName};
 pub const RAD_INT_PER_SECOND: DiagnosticId =
     DiagnosticId::from_u128(337040787172757619024841343456040760896);
 

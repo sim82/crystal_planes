@@ -39,19 +39,12 @@ impl Default for PropertyAccess {
 }
 
 #[derive(Default)]
-pub struct PropentRegistry {
+pub struct PropertyRegistry {
     pub(crate) name_cache: HashMap<String, Option<Entity>>,
     pending_create: Mutex<HashSet<String>>,
 }
-// impl Default for PropentRegistry {
-//     fn default() -> Self {
-//         PropentRegistry {
-//             name_cache:
-//         }
-//     }
-// }
 
-impl PropentRegistry {
+impl PropertyRegistry {
     pub fn get(&self, name: &str) -> Option<Entity> {
         match self.name_cache.get(name) {
             None => {
@@ -65,13 +58,13 @@ impl PropentRegistry {
         }
     }
 }
-fn create_pending(mut commands: Commands, mut propent_registry: ResMut<PropentRegistry>) {
-    let pending_create = propent_registry.pending_create.get_mut().unwrap();
+fn create_pending(mut commands: Commands, mut property_registry: ResMut<PropertyRegistry>) {
+    let pending_create = property_registry.pending_create.get_mut().unwrap();
     if !pending_create.is_empty() {
         // std::mem::take is necessary so we have exclusive mut access inside the loop (pending_create is always completely consumed)
         for pending in std::mem::take(pending_create).drain() {
-            println!("spawn pending propent: {}", pending);
-            propent_registry.name_cache.insert(pending.clone(), None); // placeholder, will be filled by detect_change system
+            println!("spawn pending property entity: {}", pending);
+            property_registry.name_cache.insert(pending.clone(), None); // placeholder, will be filled by detect_change system
             commands
                 .spawn()
                 .insert(PropertyName(pending))
@@ -80,14 +73,14 @@ fn create_pending(mut commands: Commands, mut propent_registry: ResMut<PropentRe
     }
 }
 fn detect_change(
-    mut propent_registry: ResMut<PropentRegistry>,
+    mut property_registry: ResMut<PropertyRegistry>,
     query: Query<&PropertyValue>,
     query_changed: Query<(Entity, &PropertyName, &PropertyValue), Changed<PropertyName>>,
     mut query_access: Query<(Entity, &PropertyName, &mut PropertyAccess), Changed<PropertyName>>,
 ) {
     for (ent, name, value) in query_changed.iter() {
         println!("new: {:?} {:?} {:?}", ent, name, value);
-        propent_registry
+        property_registry
             .name_cache
             .insert(name.0.clone(), Some(ent));
     }
@@ -96,7 +89,7 @@ fn detect_change(
         println!("new access. initial propagate: {:?} {:?}", ent, name);
         let value = query
             .get(
-                propent_registry
+                property_registry
                     .get(&name.0)
                     .expect("failed to get ent for property"),
             )
@@ -131,12 +124,12 @@ fn update_event_listener(
 }
 
 #[derive(Default)]
-pub struct PropentPlugin;
+pub struct PropertyPlugin;
 
-impl Plugin for PropentPlugin {
+impl Plugin for PropertyPlugin {
     fn build(&self, app: &mut App) {
-        println!("propent plugin");
-        app.init_resource::<PropentRegistry>()
+        println!("property entity plugin");
+        app.init_resource::<PropertyRegistry>()
             .add_system(create_pending.system())
             .add_system(detect_change.system())
             .add_system(update_event_listener.system())
