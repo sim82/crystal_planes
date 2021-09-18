@@ -88,12 +88,12 @@ use quad_render::RotatorSystemState;
 fn rotator_system(
     time: Res<Time>,
     // property_registry: Res<PropertyRegistry>,
-    propent_registry: Res<PropertyRegistry>,
+    property_registry: Res<PropertyRegistry>,
     mut query: Query<(&Rotator, &mut Transform)>,
-    propent_query: Query<(&PropertyName, &PropertyValue)>,
+    property_query: Query<(&PropertyName, &PropertyValue)>,
 ) {
-    if let Some(ent) = propent_registry.get("rotator_system.enabled") {
-        if let Ok((_, PropertyValue::Bool(true))) = propent_query.get(ent) {
+    if let Some(ent) = property_registry.get("rotator_system.enabled") {
+        if let Ok((_, PropertyValue::Bool(true))) = property_query.get(ent) {
             for (_rotator, mut transform) in query.iter_mut() {
                 transform.rotate(Quat::from_rotation_y(0.5 * time.delta_seconds()));
             }
@@ -263,16 +263,16 @@ fn setup_demo_system(mut commands: Commands) {
 fn demo_system(
     mut state: ResMut<DemoSystemState>,
     time: Res<Time>,
-    propent_registry: Res<PropertyRegistry>,
+    property_registry: Res<PropertyRegistry>,
     rad_update_channel: Res<Mutex<Sender<rad::com::RenderToRad>>>,
-    propent_query: Query<(&PropertyName, &PropertyValue)>,
-    propent_query_changed: Query<(&PropertyName, &PropertyValue), Changed<PropertyValue>>,
+    property_query: Query<(&PropertyName, &PropertyValue)>,
+    property_query_changed: Query<(&PropertyName, &PropertyValue), Changed<PropertyValue>>,
 ) {
     state.cycle_timer.tick(time.delta());
 
     if state.cycle_timer.just_finished() {
-        if let Some(ent) = propent_registry.get("demo_system.cycle") {
-            if let Ok((_, PropertyValue::Bool(true))) = propent_query.get(ent) {
+        if let Some(ent) = property_registry.get("demo_system.cycle") {
+            if let Ok((_, PropertyValue::Bool(true))) = property_query.get(ent) {
                 rad_update_channel
                     .lock()
                     .unwrap()
@@ -284,8 +284,8 @@ fn demo_system(
             }
         }
     }
-    if let Some(ent) = propent_registry.get("demo_system.light_enabled") {
-        if let Ok((_, PropertyValue::Bool(v))) = propent_query_changed.get(ent) {
+    if let Some(ent) = property_registry.get("demo_system.light_enabled") {
+        if let Ok((_, PropertyValue::Bool(v))) = property_query_changed.get(ent) {
             rad_update_channel
                 .lock()
                 .unwrap()

@@ -44,9 +44,9 @@ pub fn hud_egui_setup_system(mut commands: Commands) {
 
 pub fn hud_egui_system(
     egui_context: Res<EguiContext>,
-    propent_registry: Res<PropertyRegistry>,
+    property_registry: Res<PropertyRegistry>,
     mut property_update_events: EventWriter<PropertyUpdateEvent>,
-    propent_query: Query<(&PropertyValue, &PropertyName)>,
+    property_query: Query<(&PropertyValue, &PropertyName)>,
     diagnostics: Res<Diagnostics>,
     render_status: Res<RenderStatus>,
     hud_elements_query: Query<(Entity, &HudElement)>,
@@ -81,10 +81,10 @@ pub fn hud_egui_system(
                     };
                     ui.label(text);
                 }
-                HudElement::ToggleButtonPropent(property_name, _on_text, _off_text) => {
-                    match propent_registry.get(&property_name) {
+                HudElement::ToggleButtonProperty(property_name, _on_text, _off_text) => {
+                    match property_registry.get(&property_name) {
                         Some(rs) => {
-                            let (v, _) = propent_query.get(rs).unwrap();
+                            let (v, _) = property_query.get(rs).unwrap();
                             let v = match v {
                                 PropertyValue::Bool(v) => *v,
                                 _ => false,
@@ -101,7 +101,7 @@ pub fn hud_egui_system(
                         }
                     }
                 }
-                HudElement::ToggleThis => match propent_query.get(entity) {
+                HudElement::ToggleThis => match property_query.get(entity) {
                     Ok((property_value, property_name)) => {
                         let v = match property_value {
                             PropertyValue::Bool(v) => *v,

@@ -95,7 +95,7 @@ pub enum HudSrc {
 #[derive(Clone)]
 pub enum HudElement {
     TextWithSource(HudSrc),
-    ToggleButtonPropent(String, String, String),
+    ToggleButtonProperty(String, String, String),
     ToggleThis,
 }
 
@@ -128,7 +128,7 @@ pub enum HudElement {
 //                     })
 //                     .insert(hud_src.clone());
 //             }
-//             HudElement::ToggleButtonPropent(property_name, on_text, off_text) => {
+//             HudElement::ToggleButtonProperty(property_name, on_text, off_text) => {
 //                 parent
 //                     .spawn_bundle(ButtonBundle {
 //                         style: Style {
@@ -186,17 +186,17 @@ pub enum HudElement {
 //             true,
 //         )),
 //         HudElement::TextWithSource(HudSrc::RenderStatus),
-//         HudElement::ToggleButtonPropent(
+//         HudElement::ToggleButtonProperty(
 //             "rotator_system.enabled".to_string(),
 //             "Stop".to_string(),
 //             "Start".to_string(),
 //         ),
-//         HudElement::ToggleButtonPropent(
+//         HudElement::ToggleButtonProperty(
 //             "demo_system.light_enabled".to_string(),
 //             "disable light".to_string(),
 //             "enable light".to_string(),
 //         ),
-//         HudElement::ToggleButtonPropent(
+//         HudElement::ToggleButtonProperty(
 //             "demo_system.cycle".to_string(),
 //             "disable cycle".to_string(),
 //             "enable cycle".to_string(),
