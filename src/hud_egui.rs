@@ -22,6 +22,41 @@ fn mag_to_str(mag: i32) -> &'static str {
     }
 }
 
+pub fn hud_egui_setup_system(mut commands: Commands) {
+    commands
+        .spawn()
+        .insert(HudElement::TextWithSource(HudSrc::Diagnostics(
+            "FPS".into(),
+            FrameTimeDiagnosticsPlugin::FPS,
+            false,
+        )));
+    commands
+        .spawn()
+        .insert(HudElement::TextWithSource(HudSrc::Diagnostics(
+            "Int/s".into(),
+            RAD_INT_PER_SECOND,
+            true,
+        )));
+    commands
+        .spawn()
+        .insert(HudElement::TextWithSource(HudSrc::RenderStatus));
+    commands.spawn().insert(HudElement::ToggleButtonPropent(
+        "rotator_system.enabled".to_string(),
+        "Stop".to_string(),
+        "Start".to_string(),
+    ));
+    commands.spawn().insert(HudElement::ToggleButtonPropent(
+        "demo_system.light_enabled".to_string(),
+        "disable light".to_string(),
+        "enable light".to_string(),
+    ));
+    commands.spawn().insert(HudElement::ToggleButtonPropent(
+        "demo_system.cycle".to_string(),
+        "disable cycle".to_string(),
+        "enable cycle".to_string(),
+    ));
+}
+
 pub fn hud_egui_system(
     egui_context: Res<EguiContext>,
     propent_registry: Res<PropentRegistry>,
@@ -29,60 +64,29 @@ pub fn hud_egui_system(
     propent_query: Query<&PropertyValue>,
     diagnostics: Res<Diagnostics>,
     render_status: Res<RenderStatus>,
+    hud_elements_query: Query<&HudElement>,
 ) {
-    let hud_elements = [
-        HudElement::TextWithSource(HudSrc::Diagnostics(
-            "FPS".into(),
-            FrameTimeDiagnosticsPlugin::FPS,
-            false,
-        )),
-        HudElement::TextWithSource(HudSrc::Diagnostics(
-            "Int/s".into(),
-            RAD_INT_PER_SECOND,
-            true,
-        )),
-        HudElement::TextWithSource(HudSrc::RenderStatus),
-        HudElement::ToggleButtonPropent(
-            "rotator_system.enabled".to_string(),
-            "Stop".to_string(),
-            "Start".to_string(),
-        ),
-        HudElement::ToggleButtonPropent(
-            "demo_system.light_enabled".to_string(),
-            "disable light".to_string(),
-            "enable light".to_string(),
-        ),
-        HudElement::ToggleButtonPropent(
-            "demo_system.cycle".to_string(),
-            "disable cycle".to_string(),
-            "enable cycle".to_string(),
-        ),
-    ];
-
     egui::Window::new("HUD").show(egui_context.ctx(), |ui| {
-        for element in hud_elements {
+        for element in hud_elements_query.iter() {
             match element {
                 HudElement::TextWithSource(s) => {
                     let text = match s {
                         HudSrc::Diagnostics(diag_text, id, unit) => {
-                            if let Some(fps) = diagnostics.get(id) {
-                                if let Some(mut average) = fps.average() {
-                                    if unit {
-                                        let mut mag = 0;
-                                        while average >= 1000f64 {
-                                            average /= 1000f64;
-                                            mag += 1;
-                                        }
-
-                                        format!("{} {:.3}{}", diag_text, average, mag_to_str(mag))
-                                    } else {
-                                        format!("{} {:.2}", diag_text, average)
+                            if let Some(fps) = diagnostics.get(*id) {
+                                let mut average = fps.average().unwrap_or_default();
+                                if *unit {
+                                    let mut mag = 0;
+                                    while average >= 1000f64 {
+                                        average /= 1000f64;
+                                        mag += 1;
                                     }
+
+                                    format!("{} {:.3}{}", diag_text, average, mag_to_str(mag))
                                 } else {
-                                    String::new()
+                                    format!("{} {:.2}", diag_text, average)
                                 }
                             } else {
-                                String::new()
+                                format!("failed: {:?}", id)
                             }
                         }
                         HudSrc::RenderStatus => {
@@ -102,7 +106,7 @@ pub fn hud_egui_system(
                             };
                             if ui.button(format!("{}:{:?}", property_name, v)).clicked() {
                                 property_update_events.send(PropertyUpdateEvent::new(
-                                    property_name,
+                                    property_name.clone(),
                                     PropertyValue::Bool(!v),
                                 ));
                             }
@@ -115,25 +119,15 @@ pub fn hud_egui_system(
             }
         }
     });
+}
 
-    // egui::Window::new("Hello").show(egui_context.ctx(), |ui| {
-    //     ui.label("world");
-    //     match propent_registry.get("rotator_system.enabled") {
-    //         Some(rs) => {
-    //             let v = propent_query.get(rs).unwrap();
-    //             let v = match v {
-    //                 PropertyValue::Bool(v) => *v,
-    //                 _ => false,
-    //             };
-    //             if ui.button(format!("rotate: {:?}", v)).clicked() {
-    //                 info!("quit");
-    //                 property_update_events.send(PropertyUpdateEvent::new(
-    //                     "rotator_system.enabled".to_string(),
-    //                     PropertyValue::Bool(!v),
-    //                 ));
-    //             }
-    //         }
-    //         _ => (),
-    //     }
-    // });
+#[derive(Default)]
+pub struct HudEguiPlugin;
+
+impl Plugin for HudEguiPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<RenderStatus>()
+            .add_startup_system(hud_egui_setup_system.system())
+            .add_system(hud_egui_system.system());
+    }
 }

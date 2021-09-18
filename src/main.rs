@@ -12,7 +12,8 @@ use bevy::{
 use bevy_egui::EguiPlugin;
 use crystal_planes::{
     hud::{self, DemoSystemState},
-    hud_egui, map,
+    hud_egui::{self, HudEguiPlugin},
+    map,
     propent::{self, PropentRegistry, PropertyName, PropertyUpdateEvent, PropertyValue},
     quad_render, rad, util,
 };
@@ -39,7 +40,7 @@ fn main() {
         .add_startup_system(setup_demo_system.system())
         .add_system(demo_system.system())
         .init_resource::<DemoSystemState>()
-        .add_plugin(hud::HudPlugin)
+        // .add_plugin(hud::HudPlugin)
         .add_system(rotator_system.system())
         .init_resource::<RotatorSystemState>()
         .insert_resource(WinitConfig {
@@ -48,7 +49,7 @@ fn main() {
         .add_system(rad_to_render_update.system())
         .add_startup_system(setup_diagnostic_system.system())
         .add_plugin(EguiPlugin)
-        .add_system(hud_egui::hud_egui_system.system())
+        .add_plugin(HudEguiPlugin)
         .run();
     println!("run returned");
 }
