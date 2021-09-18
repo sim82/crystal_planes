@@ -11,7 +11,7 @@ use bevy::{
 };
 use bevy_egui::EguiPlugin;
 use crystal_planes::{
-    hud::{self, DemoSystemState},
+    hud::{self, DemoSystemState, HudElement},
     hud_egui::{self, HudEguiPlugin},
     map,
     propent::{self, PropentRegistry, PropertyName, PropertyUpdateEvent, PropertyValue},
@@ -247,15 +247,18 @@ fn setup_demo_system(mut commands: Commands) {
     commands
         .spawn()
         .insert(propent::PropertyName("demo_system.light_enabled".into()))
-        .insert(propent::PropertyValue::Bool(true));
+        .insert(propent::PropertyValue::Bool(true))
+        .insert(HudElement::ToggleThis);
     commands
         .spawn()
         .insert(propent::PropertyName("rotator_system.enabled".into()))
-        .insert(propent::PropertyValue::Bool(true));
+        .insert(propent::PropertyValue::Bool(true))
+        .insert(HudElement::ToggleThis);
     commands
         .spawn()
         .insert(propent::PropertyName("demo_system.cycle".into()))
-        .insert(propent::PropertyValue::Bool(false));
+        .insert(propent::PropertyValue::Bool(false))
+        .insert(HudElement::ToggleThis);
 }
 fn demo_system(
     mut state: ResMut<DemoSystemState>,

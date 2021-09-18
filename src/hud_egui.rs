@@ -6,7 +6,7 @@ use bevy_egui::{egui, EguiContext};
 
 use crate::{
     hud::{HudElement, HudSrc, RenderStatus, RAD_INT_PER_SECOND},
-    propent::{PropentRegistry, PropertyUpdateEvent, PropertyValue},
+    propent::{PropentRegistry, PropertyName, PropertyUpdateEvent, PropertyValue},
 };
 
 fn mag_to_str(mag: i32) -> &'static str {
@@ -40,34 +40,19 @@ pub fn hud_egui_setup_system(mut commands: Commands) {
     commands
         .spawn()
         .insert(HudElement::TextWithSource(HudSrc::RenderStatus));
-    commands.spawn().insert(HudElement::ToggleButtonPropent(
-        "rotator_system.enabled".to_string(),
-        "Stop".to_string(),
-        "Start".to_string(),
-    ));
-    commands.spawn().insert(HudElement::ToggleButtonPropent(
-        "demo_system.light_enabled".to_string(),
-        "disable light".to_string(),
-        "enable light".to_string(),
-    ));
-    commands.spawn().insert(HudElement::ToggleButtonPropent(
-        "demo_system.cycle".to_string(),
-        "disable cycle".to_string(),
-        "enable cycle".to_string(),
-    ));
 }
 
 pub fn hud_egui_system(
     egui_context: Res<EguiContext>,
     propent_registry: Res<PropentRegistry>,
     mut property_update_events: EventWriter<PropertyUpdateEvent>,
-    propent_query: Query<&PropertyValue>,
+    propent_query: Query<(&PropertyValue, &PropertyName)>,
     diagnostics: Res<Diagnostics>,
     render_status: Res<RenderStatus>,
-    hud_elements_query: Query<&HudElement>,
+    hud_elements_query: Query<(Entity, &HudElement)>,
 ) {
     egui::Window::new("HUD").show(egui_context.ctx(), |ui| {
-        for element in hud_elements_query.iter() {
+        for (entity, element) in hud_elements_query.iter() {
             match element {
                 HudElement::TextWithSource(s) => {
                     let text = match s {
@@ -99,7 +84,7 @@ pub fn hud_egui_system(
                 HudElement::ToggleButtonPropent(property_name, _on_text, _off_text) => {
                     match propent_registry.get(&property_name) {
                         Some(rs) => {
-                            let v = propent_query.get(rs).unwrap();
+                            let (v, _) = propent_query.get(rs).unwrap();
                             let v = match v {
                                 PropertyValue::Bool(v) => *v,
                                 _ => false,
@@ -116,6 +101,23 @@ pub fn hud_egui_system(
                         }
                     }
                 }
+                HudElement::ToggleThis => match propent_query.get(entity) {
+                    Ok((property_value, property_name)) => {
+                        let v = match property_value {
+                            PropertyValue::Bool(v) => *v,
+                            _ => false,
+                        };
+                        if ui.button(format!("{}:{:?}", property_name.0, v)).clicked() {
+                            property_update_events.send(PropertyUpdateEvent::new(
+                                property_name.0.clone(),
+                                PropertyValue::Bool(!v),
+                            ));
+                        }
+                    }
+                    _ => {
+                        ui.label(format!("failed: {:?}", entity));
+                    }
+                },
             }
         }
     });
