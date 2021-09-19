@@ -9,7 +9,10 @@ use std::sync::{
 use bevy::diagnostic::{Diagnostic, Diagnostics, DiagnosticsPlugin};
 
 use bevy::{
-    diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, render::mesh::shape, winit::WinitConfig,
+    diagnostic::{EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin},
+    prelude::*,
+    render::mesh::shape,
+    winit::WinitConfig,
 };
 use bevy_egui::EguiPlugin;
 use crystal_planes::{
@@ -31,6 +34,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_plugin(EntityCountDiagnosticsPlugin::default())
         // .add_plugin(PrintDiagnosticsPlugin::default())
         .add_plugin(bevy_fly_camera::FlyCameraPlugin)
         .add_plugin(property::PropertyPlugin)
@@ -220,10 +224,12 @@ struct LightUpdateState {
 fn light_update_system(
     mut state: ResMut<LightUpdateState>,
     rad_update_channel: Res<Mutex<Sender<rad::com::RenderToRad>>>,
-    query: Query<(&RadPointLight, &GlobalTransform)>, // Mutated<GlobalTransform>)>,
-                                                      // _: Mutated<Position>
+    mut query: Query<(&mut RadPointLight, &GlobalTransform)>, // Mutated<GlobalTransform>)>,
+    // _: Mutated<Position>
+    property_registry: Res<PropertyRegistry>,
+    property_query: Query<&PropertyValue>,
 ) {
-    for (rad_light, transform) in query.iter() {
+    for (rad_light, transform) in query.iter_mut() {
         let pos = transform.translation * 4.0;
 
         // FIXME: shouldn't Mutated<GlobalTransform>)> do this?
@@ -232,12 +238,22 @@ fn light_update_system(
         }
         // println!("send: {:?}", pos);
 
+        let color = if let Some(propt) = property_registry.get("demo_system.light_color") {
+            if let Ok(PropertyValue::Color(color)) = property_query.get(propt) {
+                *color
+            } else {
+                rad_light.color
+            }
+        } else {
+            rad_light.color
+        };
+
         state.last_pos = Some(pos);
 
         rad_update_channel
             .lock()
             .unwrap()
-            .send(rad::com::RenderToRad::PointLight(0, pos, rad_light.color))
+            .send(rad::com::RenderToRad::PointLight(0, pos, color))
             .unwrap();
     }
 }
@@ -276,6 +292,13 @@ fn setup_demo_system(mut commands: Commands, mut hud_order: ResMut<HudOrder>) {
         .spawn()
         .insert(property::PropertyName("demo_system.test_string2".into()))
         .insert(property::PropertyValue::String("Hello Property2!".into()))
+        .insert(HudElement::EditThis)
+        .insert(hud_order.next().in_group(hud_group));
+
+    commands
+        .spawn()
+        .insert(property::PropertyName("demo_system.light_color".into()))
+        .insert(property::PropertyValue::Color(Vec3::new(1.0, 0.9, 0.8)))
         .insert(HudElement::EditThis)
         .insert(hud_order.next().in_group(hud_group));
 }

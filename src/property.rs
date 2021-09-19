@@ -12,6 +12,7 @@ pub enum PropertyValue {
     None,
     Bool(bool),
     String(String),
+    Color(Vec3),
 }
 
 #[derive(Debug)]

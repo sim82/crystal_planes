@@ -1,10 +1,13 @@
 use std::time::Instant;
 
 use bevy::{
-    diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
+    diagnostic::{Diagnostics, EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin},
     prelude::*,
 };
-use bevy_egui::{egui, EguiContext};
+use bevy_egui::{
+    egui::{self, plot},
+    EguiContext,
+};
 
 use crate::{
     hud::{HudElement, HudPlotDiagnostic, HudSrc, RenderStatus, RAD_INT_PER_SECOND},
@@ -47,9 +50,13 @@ pub fn hud_egui_setup_system(mut commands: Commands, mut hud_order: ResMut<HudOr
         .insert(HudElement::TextWithSource(HudSrc::RenderStatus))
         .insert(hud_order.next().in_group(hud_group));
 
-    commands
-        .spawn()
-        .insert(HudPlotDiagnostic::new(RAD_INT_PER_SECOND, "Rad Int/s"));
+    // commands
+    //     .spawn()
+    //     .insert(HudPlotDiagnostic::new(RAD_INT_PER_SECOND, "Rad Int/s"));
+    // commands.spawn().insert(HudPlotDiagnostic::new(
+    //     EntityCountDiagnosticsPlugin::ENTITY_COUNT,
+    //     "entity count",
+    // ));
 }
 
 pub struct StringEdit {
@@ -164,6 +171,15 @@ pub fn hud_egui_system(
                                         }
                                     }
                                 },
+                                PropertyValue::Color(color) => {
+                                    let mut color = [color.x, color.y, color.z];
+                                    if ui.color_edit_button_rgb(&mut color).changed() {
+                                        property_update_events.send(PropertyUpdateEvent::new(
+                                            property_name.0.clone(),
+                                            PropertyValue::Color(color.into()),
+                                        ));
+                                    }
+                                }
                                 _ => (),
                             };
                         }
@@ -181,9 +197,10 @@ pub fn hud_egui_system(
     for mut plot_diagnostic in hud_plot_diagnostic.iter_mut() {
         if let Some(diag) = diagnostics.get(plot_diagnostic.id) {
             let x = plot_diagnostic.x;
-            plot_diagnostic
-                .buf
-                .push_back(egui::plot::Value::new(x, diag.value().unwrap_or_default()));
+            plot_diagnostic.buf.push_back(egui::plot::Value::new(
+                x,
+                diag.value().unwrap_or_default(), /* * 1e-9*/
+            ));
             plot_diagnostic.x += 1.0;
             if plot_diagnostic.buf.len() > 400 {
                 plot_diagnostic.buf.pop_front();
@@ -195,14 +212,14 @@ pub fn hud_egui_system(
             //         .collect(),
             // ));
 
-            let points = egui::plot::Points::new(egui::plot::Values::from_values_iter(
+            let points = egui::plot::Line::new(egui::plot::Values::from_values_iter(
                 plot_diagnostic.buf.iter().cloned(),
             ));
 
             // let points = egui::plot::Points::new(plot_diagnostic.buf);
             // .stems(-1.5)
             // .radius(1.0);
-            let plot = egui::plot::Plot::new("diag").points(points);
+            let plot = egui::plot::Plot::new("diag").line(points).include_y(0.0);
             egui::Window::new(&plot_diagnostic.name).show(egui_context.ctx(), |ui| {
                 ui.add(plot);
             });
