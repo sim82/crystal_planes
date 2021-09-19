@@ -22,24 +22,28 @@ fn mag_to_str(mag: i32) -> &'static str {
     }
 }
 
-pub fn hud_egui_setup_system(mut commands: Commands) {
+pub fn hud_egui_setup_system(mut commands: Commands, mut hud_order: ResMut<HudOrder>) {
+    let hud_group = "1. Diag";
     commands
         .spawn()
         .insert(HudElement::TextWithSource(HudSrc::Diagnostics(
             "FPS".into(),
             FrameTimeDiagnosticsPlugin::FPS,
             false,
-        )));
+        )))
+        .insert(hud_order.next().in_group(hud_group));
     commands
         .spawn()
         .insert(HudElement::TextWithSource(HudSrc::Diagnostics(
             "Int/s".into(),
             RAD_INT_PER_SECOND,
             true,
-        )));
+        )))
+        .insert(hud_order.next().in_group(hud_group));
     commands
         .spawn()
-        .insert(HudElement::TextWithSource(HudSrc::RenderStatus));
+        .insert(HudElement::TextWithSource(HudSrc::RenderStatus))
+        .insert(hud_order.next().in_group(hud_group));
 }
 
 pub struct StringEdit {
@@ -60,8 +64,14 @@ pub fn hud_egui_system(
     egui::Window::new("HUD").show(egui_context.ctx(), |ui| {
         let mut ordered: Vec<_> = hud_elements_query.iter().collect();
         ordered.sort_by_key(|(_, o, _)| *o);
-
-        for (entity, _, element) in ordered {
+        let mut cur_group = None;
+        for (entity, hud_order, element) in ordered {
+            if cur_group != hud_order.group {
+                cur_group = hud_order.group.clone();
+                if let Some(ref name) = cur_group {
+                    ui.label(name);
+                }
+            }
             match element {
                 HudElement::TextWithSource(s) => {
                     let text = match s {
@@ -158,16 +168,21 @@ pub fn hud_egui_system(
     });
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Default, Ord, PartialOrd)]
+#[derive(Clone, Eq, PartialEq, Default, Ord, PartialOrd)]
 pub struct HudOrder {
+    group: Option<String>,
     id: usize,
 }
 
 impl HudOrder {
     pub fn next(&mut self) -> HudOrder {
-        let ret = *self;
+        let ret = self.clone();
         self.id += 1;
         ret
+    }
+    pub fn in_group(mut self, group: &str) -> HudOrder {
+        self.group = Some(group.to_string());
+        self
     }
 }
 

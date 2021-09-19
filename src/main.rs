@@ -244,37 +244,38 @@ fn rand_color(min: f32, max: f32) -> Vec3 {
     util::hsv_to_rgb(thread_rng().gen_range(min..max), 1f32, 1f32)
 }
 fn setup_demo_system(mut commands: Commands, mut hud_order: ResMut<HudOrder>) {
+    let hud_group = "2. Demo System";
     commands
         .spawn()
         .insert(property::PropertyName("demo_system.light_enabled".into()))
         .insert(property::PropertyValue::Bool(true))
         .insert(HudElement::EditThis)
-        .insert(hud_order.next());
+        .insert(hud_order.next().in_group(hud_group));
     commands
         .spawn()
         .insert(property::PropertyName("rotator_system.enabled".into()))
         .insert(property::PropertyValue::Bool(true))
         .insert(HudElement::EditThis)
-        .insert(hud_order.next());
+        .insert(hud_order.next().in_group(hud_group));
     commands
         .spawn()
         .insert(property::PropertyName("demo_system.cycle".into()))
         .insert(property::PropertyValue::Bool(false))
         .insert(HudElement::EditThis)
-        .insert(hud_order.next());
+        .insert(hud_order.next().in_group(hud_group));
 
     commands
         .spawn()
         .insert(property::PropertyName("demo_system.test_string".into()))
         .insert(property::PropertyValue::String("Hello Property!".into()))
         .insert(HudElement::EditThis)
-        .insert(hud_order.next());
+        .insert(hud_order.next().in_group(hud_group));
     commands
         .spawn()
         .insert(property::PropertyName("demo_system.test_string2".into()))
         .insert(property::PropertyValue::String("Hello Property2!".into()))
         .insert(HudElement::EditThis)
-        .insert(hud_order.next());
+        .insert(hud_order.next().in_group(hud_group));
 }
 
 fn demo_system(
