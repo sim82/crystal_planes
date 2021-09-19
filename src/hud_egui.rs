@@ -54,11 +54,14 @@ pub fn hud_egui_system(
     property_query: Query<(&PropertyValue, &PropertyName)>,
     diagnostics: Res<Diagnostics>,
     render_status: Res<RenderStatus>,
-    hud_elements_query: Query<(Entity, &HudElement)>,
+    hud_elements_query: Query<(Entity, &HudOrder, &HudElement)>,
     mut string_edit_query: Query<&mut StringEdit>,
 ) {
     egui::Window::new("HUD").show(egui_context.ctx(), |ui| {
-        for (entity, element) in hud_elements_query.iter() {
+        let mut ordered: Vec<_> = hud_elements_query.iter().collect();
+        ordered.sort_by_key(|(_, o, _)| *o);
+
+        for (entity, _, element) in ordered {
             match element {
                 HudElement::TextWithSource(s) => {
                     let text = match s {
@@ -155,12 +158,26 @@ pub fn hud_egui_system(
     });
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Default, Ord, PartialOrd)]
+pub struct HudOrder {
+    id: usize,
+}
+
+impl HudOrder {
+    pub fn next(&mut self) -> HudOrder {
+        let ret = *self;
+        self.id += 1;
+        ret
+    }
+}
+
 #[derive(Default)]
 pub struct HudEguiPlugin;
 
 impl Plugin for HudEguiPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<RenderStatus>()
+            .init_resource::<HudOrder>()
             .add_startup_system(hud_egui_setup_system.system())
             .add_system(hud_egui_system.system());
     }
