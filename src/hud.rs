@@ -36,7 +36,7 @@ impl Default for RenderStatus {
 }
 
 // #[allow(dead_code)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum HudSrc {
     Diagnostics(String, DiagnosticId, bool),
     RenderStatus,
@@ -92,7 +92,7 @@ pub enum HudSrc {
 //     }
 // }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum HudElement {
     TextWithSource(HudSrc),
     ToggleButtonProperty(String, String, String),

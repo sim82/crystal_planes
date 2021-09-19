@@ -61,114 +61,118 @@ pub fn hud_egui_system(
     hud_elements_query: Query<(Entity, &HudOrder, &HudElement)>,
     mut string_edit_query: Query<&mut StringEdit>,
 ) {
-    egui::Window::new("HUD").show(egui_context.ctx(), |ui| {
-        let mut ordered: Vec<_> = hud_elements_query.iter().collect();
-        ordered.sort_by_key(|(_, o, _)| *o);
-        let mut cur_group = None;
-        for (entity, hud_order, element) in ordered {
-            if cur_group != hud_order.group {
-                cur_group = hud_order.group.clone();
-                if let Some(ref name) = cur_group {
-                    ui.label(name);
-                }
-            }
-            match element {
-                HudElement::TextWithSource(s) => {
-                    let text = match s {
-                        HudSrc::Diagnostics(diag_text, id, unit) => {
-                            if let Some(fps) = diagnostics.get(*id) {
-                                let mut average = fps.average().unwrap_or_default();
-                                if *unit {
-                                    let mut mag = 0;
-                                    while average >= 1000f64 {
-                                        average /= 1000f64;
-                                        mag += 1;
-                                    }
+    let mut ordered: Vec<_> = hud_elements_query.iter().collect();
+    ordered.sort_by_key(|(_, o, _)| *o);
 
-                                    format!("{} {:.3}{}", diag_text, average, mag_to_str(mag))
+    let hud_groups = ordered.group_by(|(_, a, _), (_, b, _)| a.group == b.group);
+    for c in hud_groups {
+        if c.is_empty() {
+            continue;
+        }
+        let title = c[0].1.group.clone().unwrap_or("HUD".to_string());
+        egui::Window::new(&title).show(egui_context.ctx(), |ui| {
+            for (entity, _, element) in c {
+                let entity = *entity; // hmm, is there a way to deref the whole thing?
+
+                match element {
+                    HudElement::TextWithSource(s) => {
+                        let text = match s {
+                            HudSrc::Diagnostics(diag_text, id, unit) => {
+                                if let Some(fps) = diagnostics.get(*id) {
+                                    let mut average = fps.average().unwrap_or_default();
+                                    if *unit {
+                                        let mut mag = 0;
+                                        while average >= 1000f64 {
+                                            average /= 1000f64;
+                                            mag += 1;
+                                        }
+
+                                        format!("{} {:.3}{}", diag_text, average, mag_to_str(mag))
+                                    } else {
+                                        format!("{} {:.2}", diag_text, average)
+                                    }
                                 } else {
-                                    format!("{} {:.2}", diag_text, average)
+                                    format!("failed: {:?}", id)
                                 }
-                            } else {
-                                format!("failed: {:?}", id)
                             }
-                        }
-                        HudSrc::RenderStatus => {
-                            format!("render status: {}", render_status.text)
-                        }
-                        HudSrc::LoadingScreen => String::new(),
-                    };
-                    ui.label(text);
-                }
-                HudElement::ToggleButtonProperty(property_name, _on_text, _off_text) => {
-                    match property_registry.get(&property_name) {
-                        Some(rs) => {
-                            let (v, _) = property_query.get(rs).unwrap();
-                            let v = match v {
-                                PropertyValue::Bool(v) => *v,
-                                _ => false,
-                            };
-                            if ui.button(format!("{}:{:?}", property_name, v)).clicked() {
-                                property_update_events.send(PropertyUpdateEvent::new(
-                                    property_name.clone(),
-                                    PropertyValue::Bool(!v),
-                                ));
+                            HudSrc::RenderStatus => {
+                                format!("render status: {}", render_status.text)
                             }
-                        }
-                        _ => {
-                            ui.label(format!("failed: {}", property_name));
-                        }
+                            HudSrc::LoadingScreen => String::new(),
+                        };
+                        ui.label(text);
                     }
-                }
-                HudElement::EditThis => match property_query.get(entity) {
-                    Ok((property_value, property_name)) => {
-                        match property_value {
-                            PropertyValue::Bool(v) => {
-                                if ui.button(format!("{}:{:?}", property_name.0, v)).clicked() {
+                    HudElement::ToggleButtonProperty(property_name, _on_text, _off_text) => {
+                        match property_registry.get(&property_name) {
+                            Some(rs) => {
+                                let (v, _) = property_query.get(rs).unwrap();
+                                let v = match v {
+                                    PropertyValue::Bool(v) => *v,
+                                    _ => false,
+                                };
+                                if ui.button(format!("{}:{:?}", property_name, v)).clicked() {
                                     property_update_events.send(PropertyUpdateEvent::new(
-                                        property_name.0.clone(),
+                                        property_name.clone(),
                                         PropertyValue::Bool(!v),
                                     ));
                                 }
                             }
-                            PropertyValue::String(s) => match string_edit_query.get_mut(entity) {
-                                Ok(mut string_edit) => {
-                                    if ui
-                                        .text_edit_singleline(&mut string_edit.current_string)
-                                        .lost_focus()
-                                    {
-                                        commands.entity(entity).remove::<StringEdit>();
+                            _ => {
+                                ui.label(format!("failed: {}", property_name));
+                            }
+                        }
+                    }
+                    HudElement::EditThis => match property_query.get(entity) {
+                        Ok((property_value, property_name)) => {
+                            match property_value {
+                                PropertyValue::Bool(v) => {
+                                    if ui.button(format!("{}:{:?}", property_name.0, v)).clicked() {
                                         property_update_events.send(PropertyUpdateEvent::new(
                                             property_name.0.clone(),
-                                            PropertyValue::String(
-                                                string_edit.current_string.clone(),
-                                            ),
+                                            PropertyValue::Bool(!v),
                                         ));
                                     }
                                 }
-                                _ => {
-                                    if ui.button(&property_name.0).clicked() {
-                                        commands.entity(entity).insert(StringEdit {
-                                            current_string: s.to_string(),
-                                        });
+                                PropertyValue::String(s) => match string_edit_query.get_mut(entity)
+                                {
+                                    Ok(mut string_edit) => {
+                                        if ui
+                                            .text_edit_singleline(&mut string_edit.current_string)
+                                            .lost_focus()
+                                        {
+                                            commands.entity(entity).remove::<StringEdit>();
+                                            property_update_events.send(PropertyUpdateEvent::new(
+                                                property_name.0.clone(),
+                                                PropertyValue::String(
+                                                    string_edit.current_string.clone(),
+                                                ),
+                                            ));
+                                        }
                                     }
-                                }
-                            },
-                            _ => (),
-                        };
-                    }
-                    _ => {
-                        ui.label(format!("failed: {:?}", entity));
-                    }
-                },
+                                    _ => {
+                                        if ui.button(&property_name.0).clicked() {
+                                            commands.entity(entity).insert(StringEdit {
+                                                current_string: s.to_string(),
+                                            });
+                                        }
+                                    }
+                                },
+                                _ => (),
+                            };
+                        }
+                        _ => {
+                            ui.label(format!("failed: {:?}", entity));
+                        }
+                    },
+                }
             }
-        }
 
-        // ui.add(egui::TextEdit::singleline("text").hint_text("Write something here"));
-    });
+            // ui.add(egui::TextEdit::singleline("text").hint_text("Write something here"));
+        });
+    }
 }
 
-#[derive(Clone, Eq, PartialEq, Default, Ord, PartialOrd)]
+#[derive(Clone, Eq, PartialEq, Default, Ord, PartialOrd, Debug)]
 pub struct HudOrder {
     group: Option<String>,
     id: usize,

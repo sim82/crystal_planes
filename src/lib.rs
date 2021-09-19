@@ -1,3 +1,5 @@
+#![feature(slice_group_by)]
+
 pub mod hud;
 pub mod hud_egui;
 pub mod map;

@@ -1,3 +1,5 @@
+#![feature(slice_group_by)]
+
 use std::sync::{
     mpsc::{self, Receiver, Sender},
     Mutex,
