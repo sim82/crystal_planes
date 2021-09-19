@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use bevy::{
     diagnostic::{DiagnosticId, Diagnostics, FrameTimeDiagnosticsPlugin},
     prelude::*,
@@ -97,6 +99,24 @@ pub enum HudElement {
     TextWithSource(HudSrc),
     ToggleButtonProperty(String, String, String),
     EditThis,
+}
+
+pub struct HudPlotDiagnostic {
+    pub(crate) id: DiagnosticId,
+    pub(crate) name: String,
+    pub(crate) buf: VecDeque<bevy_egui::egui::plot::Value>,
+    pub(crate) x: f64,
+}
+
+impl HudPlotDiagnostic {
+    pub fn new(id: DiagnosticId, name: &str) -> Self {
+        HudPlotDiagnostic {
+            id,
+            name: name.to_string(),
+            buf: VecDeque::new(),
+            x: 0.0,
+        }
+    }
 }
 
 // fn build_children(

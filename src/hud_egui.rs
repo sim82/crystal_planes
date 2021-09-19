@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use bevy::{
     diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
     prelude::*,
@@ -5,7 +7,7 @@ use bevy::{
 use bevy_egui::{egui, EguiContext};
 
 use crate::{
-    hud::{HudElement, HudSrc, RenderStatus, RAD_INT_PER_SECOND},
+    hud::{HudElement, HudPlotDiagnostic, HudSrc, RenderStatus, RAD_INT_PER_SECOND},
     property::{PropertyName, PropertyRegistry, PropertyUpdateEvent, PropertyValue},
 };
 
@@ -44,6 +46,10 @@ pub fn hud_egui_setup_system(mut commands: Commands, mut hud_order: ResMut<HudOr
         .spawn()
         .insert(HudElement::TextWithSource(HudSrc::RenderStatus))
         .insert(hud_order.next().in_group(hud_group));
+
+    commands
+        .spawn()
+        .insert(HudPlotDiagnostic::new(RAD_INT_PER_SECOND, "Rad Int/s"));
 }
 
 pub struct StringEdit {
@@ -60,6 +66,7 @@ pub fn hud_egui_system(
     render_status: Res<RenderStatus>,
     hud_elements_query: Query<(Entity, &HudOrder, &HudElement)>,
     mut string_edit_query: Query<&mut StringEdit>,
+    mut hud_plot_diagnostic: Query<&mut HudPlotDiagnostic>,
 ) {
     let mut ordered: Vec<_> = hud_elements_query.iter().collect();
     ordered.sort_by_key(|(_, o, _)| *o);
@@ -170,6 +177,60 @@ pub fn hud_egui_system(
             // ui.add(egui::TextEdit::singleline("text").hint_text("Write something here"));
         });
     }
+
+    for mut plot_diagnostic in hud_plot_diagnostic.iter_mut() {
+        if let Some(diag) = diagnostics.get(plot_diagnostic.id) {
+            let x = plot_diagnostic.x;
+            plot_diagnostic
+                .buf
+                .push_back(egui::plot::Value::new(x, diag.value().unwrap_or_default()));
+            plot_diagnostic.x += 1.0;
+            if plot_diagnostic.buf.len() > 400 {
+                plot_diagnostic.buf.pop_front();
+            }
+            // let points = egui::plot::Points::new(egui::plot::Values::from_values(
+            //     diag.values()
+            //         .enumerate()
+            //         .map(|(i, v)| egui::plot::Value::new(i as f64, *v))
+            //         .collect(),
+            // ));
+
+            let points = egui::plot::Points::new(egui::plot::Values::from_values_iter(
+                plot_diagnostic.buf.iter().cloned(),
+            ));
+
+            // let points = egui::plot::Points::new(plot_diagnostic.buf);
+            // .stems(-1.5)
+            // .radius(1.0);
+            let plot = egui::plot::Plot::new("diag").points(points);
+            egui::Window::new(&plot_diagnostic.name).show(egui_context.ctx(), |ui| {
+                ui.add(plot);
+            });
+        }
+    }
+}
+
+pub fn hud_egui_plot_system(
+    hud_plot_diagnostic: Query<&HudPlotDiagnostic>,
+    diagnostics: Res<Diagnostics>,
+    egui_context: Res<EguiContext>,
+) {
+    // for plot_diagnostic in hud_plot_diagnostic.iter() {
+    //     if let Some(diag) = diagnostics.get(plot_diagnostic.id) {
+    //         let points = egui::plot::Points::new(egui::plot::Values::from_values(
+    //             diag.values()
+    //                 .enumerate()
+    //                 .map(|(i, v)| egui::plot::Value::new(i as f64, *v))
+    //                 .collect(),
+    //         ))
+    //         .stems(-1.5)
+    //         .radius(1.0);
+    //         let plot = egui::plot::Plot::new("diag").points(points);
+    //         egui::Window::new("diag").show(egui_context.ctx(), |ui| {
+    //             ui.add(plot);
+    //         });
+    //     }
+    // }
 }
 
 #[derive(Clone, Eq, PartialEq, Default, Ord, PartialOrd, Debug)]
@@ -198,6 +259,8 @@ impl Plugin for HudEguiPlugin {
         app.init_resource::<RenderStatus>()
             .init_resource::<HudOrder>()
             .add_startup_system(hud_egui_setup_system.system())
-            .add_system(hud_egui_system.system());
+            .add_system(hud_egui_system.system())
+            // .add_system(hud_egui_plot_system.system())
+            ;
     }
 }
